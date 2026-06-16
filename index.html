@@ -251,7 +251,6 @@
 /* ─── Config ─── */
 const HOME = { lat: 47.497, lon: 18.957, name: 'Taraliget' };
 const BUD  = { lat: 47.4369, lon: 19.2559, icao: 'LHBP', iata: 'BUD', name: 'Budapest' };
-const SCAN_DEG  = 0.8;   // bounding box half-size in degrees (~90 km)
 const CLOSE_KM  = 15;    // distance threshold for "overhead" label
 const REFRESH_S = 60;    // seconds between flight updates
 const WEATHER_REFRESH_S = 300;
@@ -367,10 +366,9 @@ function bearingDiff(a, b) {
   return d;
 }
 
-const ftOf  = m   => Math.round(m * 3.28084);
-const ktsOf = ms  => Math.round(ms * 1.94384);
-const kmhOf = ms  => Math.round(ms * 3.6);
-const FL    = ft  => 'FL' + String(Math.round(ft / 100)).padStart(3, '0');
+// Internally everything is feet / knots / ft-per-min (adsb.fi native units)
+const ktsToKmh = kt  => Math.round(kt * 1.852);
+const FL        = ft  => 'FL' + String(Math.round(ft / 100)).padStart(3, '0');
 
 function headingCard(deg) {
   const dirs = ['N','NE','E','SE','S','SW','W','NW'];
@@ -391,21 +389,20 @@ function aircraft(code) {
 function inferStatus(plane, distKm) {
   const toBUD = bearing(plane.lat, plane.lon, BUD.lat, BUD.lon);
   const diff  = bearingDiff(plane.heading || 0, toBUD);
-  const altFt = plane.baro_alt ? ftOf(plane.baro_alt) : 0;
-  const vr    = plane.vert_rate || 0;
+  const altFt = plane.baro_alt || 0; // already feet
+  const vr    = plane.vert_rate || 0; // ft/min
 
   if (distKm < 50) {
-    if (diff < 25 && vr < -1) return 'Approaching BUD';
-    if (diff > 150 && vr > 1) return 'Departed from BUD';
+    if (diff < 25 && vr < -100) return 'Approaching BUD';
+    if (diff > 150 && vr > 100) return 'Departed from BUD';
   }
-  if (vr < -2) return 'Descending';
-  if (vr >  2) return 'Climbing';
+  if (vr < -200) return 'Descending';
+  if (vr >  200) return 'Climbing';
   if (altFt > 28000) return 'Cruise';
   return 'Overflying';
 }
 
 /* ─── Caches ─── */
-const metaCache  = new Map();
 const photoCache = new Map();
 
 /* ─── Map setup ─── */
@@ -457,9 +454,8 @@ function updateMap(planes) {
 
   airborne.forEach((p, i) => {
     const hi = i === 0;
-    const altFt = p.baro_alt ? ftOf(p.baro_alt) : 0;
     const popup = `<b>${p.callsign || p.icao24}</b><br>
-      ${FL(altFt)} &nbsp;·&nbsp; ${p.velocity ? ktsOf(p.velocity)+'kt' : '?'}
+      ${p.baro_alt ? FL(p.baro_alt) : '?'} &nbsp;·&nbsp; ${p.velocity ? p.velocity+'kt' : '?'}
       ${p._airline ? '<br>' + p._airline : ''}`;
 
     L.marker([p.lat, p.lon], { icon: planeIcon(p.heading||0, hi) })
@@ -475,42 +471,42 @@ function updateMap(planes) {
 }
 
 /* ─── API calls ─── */
+// Primary: adsb.fi — free, open CORS, native ft/kts/ftpm units, includes type+reg
+// Fallback: airplanes.live — same format
 async function fetchFlights() {
-  const lamin = HOME.lat - SCAN_DEG, lamax = HOME.lat + SCAN_DEG;
-  const lomin = HOME.lon - SCAN_DEG, lomax = HOME.lon + SCAN_DEG;
-  const r = await fetch(
-    `https://opensky-network.org/api/states/all?lamin=${lamin}&lomin=${lomin}&lamax=${lamax}&lomax=${lomax}`
-  );
-  if (!r.ok) throw new Error(`OpenSky HTTP ${r.status}`);
-  const d = await r.json();
-  return (d.states || []).map(s => ({
-    icao24:    s[0],
-    callsign:  (s[1]||'').trim() || null,
-    country:   s[2],
-    lon:       s[5],
-    lat:       s[6],
-    baro_alt:  s[7] || 0,
-    on_ground: s[8],
-    velocity:  s[9],
-    heading:   s[10],
-    vert_rate: s[11],
-    geo_alt:   s[13],
-    squawk:    s[14],
-  }));
-}
-
-async function fetchMeta(icao24) {
-  if (metaCache.has(icao24)) return metaCache.get(icao24);
-  try {
-    const r = await fetch(`https://opensky-network.org/api/metadata/aircraft/icao/${icao24}`);
-    if (r.ok) {
+  const DIST_NM = 50; // ~92 km
+  const endpoints = [
+    `https://opendata.adsb.fi/api/v2/lat/${HOME.lat}/lon/${HOME.lon}/dist/${DIST_NM}`,
+    `https://api.airplanes.live/v2/point/${HOME.lat}/${HOME.lon}/${DIST_NM}`,
+  ];
+  let last;
+  for (const url of endpoints) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) { last = new Error(`HTTP ${r.status}`); continue; }
       const d = await r.json();
-      metaCache.set(icao24, d);
-      return d;
-    }
-  } catch(e) {}
-  metaCache.set(icao24, null);
-  return null;
+      return (d.ac || []).map(a => ({
+        icao24:    a.hex,
+        callsign:  a.flight?.trim() || null,
+        country:   null,
+        lon:       a.lon,
+        lat:       a.lat,
+        baro_alt:  a.alt_baro === 'ground' ? 0 : (a.alt_baro || 0), // feet
+        on_ground: a.alt_baro === 'ground',
+        velocity:  a.gs   || 0,   // knots
+        heading:   a.track || 0,
+        vert_rate: a.baro_rate || 0, // ft/min
+        geo_alt:   a.alt_geom,
+        squawk:    a.squawk,
+        type_code: a.t  || null,   // ICAO type designator e.g. A320
+        reg:       a.r  || null,   // registration e.g. HA-LPT
+        operator:  a.oper || null, // operator name
+        category:  a.category || null, // A1–A7
+        seen:      a.seen || 0,    // seconds since last update
+      }));
+    } catch(e) { last = e; }
+  }
+  throw last || new Error('All flight APIs failed');
 }
 
 async function fetchPhoto(reg) {
@@ -555,24 +551,24 @@ function renderWeather(w) {
   `;
 }
 
-function vertSymbol(vr) {
+function vertSymbol(vr) { // vr in ft/min
   if (!vr) return '';
-  if (vr >  2) return `↑ ${Math.round(vr*196.85)} ft/min`;
-  if (vr < -2) return `↓ ${Math.abs(Math.round(vr*196.85))} ft/min`;
+  if (vr >  200) return `↑ ${Math.round(vr).toLocaleString()} ft/min`;
+  if (vr < -200) return `↓ ${Math.abs(Math.round(vr)).toLocaleString()} ft/min`;
   return '→ Level';
 }
 
-function renderOverhead(plane, meta) {
-  const altFt   = plane.baro_alt ? ftOf(plane.baro_alt) : null;
-  const speedKts = plane.velocity ? ktsOf(plane.velocity) : null;
-  const speedKmh = plane.velocity ? kmhOf(plane.velocity) : null;
+function renderOverhead(plane) {
+  const altFt    = plane.baro_alt || null; // already feet
+  const speedKts = plane.velocity || null; // already knots
+  const speedKmh = speedKts ? ktsToKmh(speedKts) : null;
 
-  const typeCode  = meta?.icaotypedesignator || meta?.typecode || null;
+  const typeCode  = plane.type_code || null;
   const acInfo    = aircraft(typeCode);
-  const modelName = acInfo?.name || (meta?.manufacturername && meta?.model ? `${meta.manufacturername} ${meta.model}` : typeCode) || 'Unknown type';
+  const modelName = acInfo?.name || typeCode || 'Unknown type';
   const pax       = acInfo?.pax;
-  const reg       = meta?.registration;
-  const op        = airline(plane.callsign) || meta?.operator || meta?.operatorcallsign || plane.country || '—';
+  const reg       = plane.reg;
+  const op        = airline(plane.callsign) || plane.operator || plane.country || '—';
   const status    = inferStatus(plane, plane._dist);
   const distStr   = plane._dist < 200 ? `${Math.round(plane._dist)} km away` : '';
 
@@ -631,16 +627,11 @@ function renderOverhead(plane, meta) {
 
   document.getElementById('overhead').innerHTML = html;
 
-  // load photo async
-  if (reg) {
-    fetchPhoto(reg).then(url => {
-      if (!url) return;
-      const box = document.getElementById('photo-box');
-      if (box) {
-        box.outerHTML = `<img class="plane-photo" src="${url}" alt="Aircraft photo" onerror="this.remove()">`;
-      }
-    });
-  }
+  fetchPhoto(reg).then(url => {
+    if (!url) return;
+    const box = document.getElementById('photo-box');
+    if (box) box.outerHTML = `<img class="plane-photo" src="${url}" alt="Aircraft photo" onerror="this.remove()">`;
+  });
 }
 
 function renderQueue(planes) {
@@ -656,8 +647,8 @@ function renderQueue(planes) {
   }
 
   document.getElementById('queue').innerHTML = airborne.map((p, i) => {
-    const altFt = p.baro_alt ? ftOf(p.baro_alt) : null;
-    const al    = airline(p.callsign) || p.country || '—';
+    const altFt = p.baro_alt || null; // already feet
+    const al    = airline(p.callsign) || p.operator || p.country || '—';
     const tag   = p._dist <= CLOSE_KM ? 'tag-near' : 'tag-far';
     const label = p._dist <= CLOSE_KM ? 'CLOSE' : Math.round(p._dist) + ' km';
     return `
@@ -669,7 +660,7 @@ function renderQueue(planes) {
         </div>
         <div class="fl-right">
           <div class="fl-alt">${altFt ? FL(altFt) : '—'}</div>
-          <div class="fl-spd">${p.velocity ? ktsOf(p.velocity) + ' kt' : ''}</div>
+          <div class="fl-spd">${p.velocity ? p.velocity + ' kt' : ''}</div>
         </div>
       </div>`;
   }).join('');
@@ -714,9 +705,7 @@ async function refresh() {
     renderQueue(airborne);
 
     if (airborne.length > 0) {
-      const top  = airborne[0];
-      const meta = await fetchMeta(top.icao24);
-      renderOverhead(top, meta);
+      renderOverhead(airborne[0]);
     } else {
       document.getElementById('overhead').innerHTML =
         '<div class="empty"><div class="icon">🌙</div><p>No aircraft detected overhead right now</p></div>';
