@@ -7,182 +7,144 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <style>
     :root {
-      --bg:       #080c14;
-      --card:     #0c1220;
-      --border:   #1a2540;
-      --blue:     #3b82f6;
-      --amber:    #f59e0b;
-      --green:    #10b981;
-      --text:     #e2e8f0;
-      --muted:    #94a3b8;
-      --dim:      #475569;
-      --mono:     'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      --bg:    #080c14;
+      --card:  #0c1220;
+      --bdr:   #1a2540;
+      --blue:  #3b82f6;
+      --amber: #f59e0b;
+      --green: #10b981;
+      --text:  #e2e8f0;
+      --muted: #94a3b8;
+      --dim:   #475569;
+      --mono:  'SF Mono','Fira Code','Cascadia Code',monospace;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
-      background: var(--bg);
-      color: var(--text);
+      background: var(--bg); color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
+      min-height: 100vh; display: flex; flex-direction: column;
     }
 
     /* ── Header ── */
     header {
-      background: var(--card);
-      border-bottom: 1px solid var(--border);
-      padding: 14px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-shrink: 0;
+      background: var(--card); border-bottom: 1px solid var(--bdr);
+      padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
     }
     .logo { display: flex; align-items: center; gap: 10px; }
-    .logo span { font-size: 20px; font-weight: 700; letter-spacing: -.3px; }
-    .logo .sub { font-size: 13px; color: var(--dim); font-weight: 400; }
-    .live {
-      display: flex; align-items: center; gap: 8px;
-      font-size: 13px; color: var(--muted);
-    }
-    .dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: var(--green);
-      animation: blink 2s ease-in-out infinite;
-    }
-    .dot.error { background: #ef4444; animation: none; }
+    .logo-title { font-size: 19px; font-weight: 700; letter-spacing: -.3px; }
+    .logo-sub { font-size: 12px; color: var(--dim); }
+    .live { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: blink 2s ease-in-out infinite; }
+    .dot.err { background: #ef4444; animation: none; }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
 
     /* ── Weather strip ── */
     #weather {
-      background: #0a1019;
-      border-bottom: 1px solid var(--border);
-      padding: 9px 24px;
-      display: flex; gap: 24px; overflow-x: auto;
-      font-size: 12.5px; color: var(--muted);
-      flex-shrink: 0;
+      background: #0a1019; border-bottom: 1px solid var(--bdr);
+      padding: 8px 20px; display: flex; gap: 20px; overflow-x: auto; flex-shrink: 0;
+      font-size: 12px; color: var(--muted);
     }
-    .w { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+    .w { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+
+    /* ── Settings bar ── */
+    #settings {
+      background: #090d19; border-bottom: 1px solid var(--bdr);
+      padding: 7px 20px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap; flex-shrink: 0;
+      font-size: 11.5px; color: var(--dim);
+    }
+    .setting-group { display: flex; align-items: center; gap: 6px; }
+    #home-coords { color: var(--muted); font-family: var(--mono); font-size: 11px; }
+    .drag-hint { font-size: 10px; color: var(--dim); font-style: italic; }
+    .radius-btn {
+      background: #111827; border: 1px solid var(--bdr);
+      color: var(--dim); font-size: 10.5px; padding: 2px 8px;
+      border-radius: 4px; cursor: pointer; transition: all .15s;
+    }
+    .radius-btn:hover { border-color: var(--blue); color: var(--blue); }
+    .radius-btn.active { background: #1e3a5f; border-color: var(--blue); color: var(--blue); }
 
     /* ── Main grid ── */
     .grid {
-      display: grid;
-      grid-template-columns: 380px 1fr;
-      grid-template-rows: auto 1fr;
-      gap: 12px;
-      padding: 12px 16px;
-      flex: 1;
-      min-height: 0;
+      display: grid; grid-template-columns: 380px 1fr; grid-template-rows: auto 1fr;
+      gap: 12px; padding: 12px 14px; flex: 1; min-height: 0;
     }
-    @media (max-width: 820px) {
-      .grid { grid-template-columns: 1fr; grid-template-rows: auto; }
-      .map-card { height: 300px; }
-    }
+    @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
 
     /* ── Cards ── */
     .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 18px;
-      display: flex;
-      flex-direction: column;
+      background: var(--card); border: 1px solid var(--bdr); border-radius: 12px;
+      padding: 16px; display: flex; flex-direction: column;
     }
     .card-title {
-      font-size: 10px; font-weight: 600;
-      text-transform: uppercase; letter-spacing: 1.8px;
-      color: var(--dim); margin-bottom: 14px;
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 1.8px; color: var(--dim); margin-bottom: 12px;
     }
 
     /* ── Overhead card ── */
-    .overhead { grid-row: 1; overflow: hidden; }
-
+    .overhead { grid-row: 1; }
     .plane-photo {
-      width: 100%; height: 160px; object-fit: cover;
-      border-radius: 8px; margin-bottom: 14px;
-      background: #0a0e1a;
+      width: 100%; height: 150px; object-fit: cover;
+      border-radius: 8px; margin-bottom: 12px; background: #0a0e1a;
     }
-    .photo-placeholder {
-      width: 100%; height: 100px; border-radius: 8px;
-      background: linear-gradient(135deg, #0a0e1a, #111827);
+    .photo-ph {
+      width: 100%; height: 80px; border-radius: 8px;
+      background: linear-gradient(135deg,#0a0e1a,#111827);
       display: flex; align-items: center; justify-content: center;
-      font-size: 52px; margin-bottom: 14px;
+      font-size: 44px; margin-bottom: 12px;
     }
-
     .callsign {
-      font-family: var(--mono);
-      font-size: 32px; font-weight: 700;
-      letter-spacing: 3px; color: #f0f9ff;
-      line-height: 1;
+      font-family: var(--mono); font-size: 30px; font-weight: 700;
+      letter-spacing: 3px; color: #f0f9ff; line-height: 1;
     }
-    .airline { font-size: 14px; color: var(--blue); margin: 5px 0 2px; }
-    .model   { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+    .op-name  { font-size: 13px; color: var(--blue); margin: 4px 0 2px; }
+    .ac-model { font-size: 11.5px; color: var(--muted); margin-bottom: 12px; }
 
     .route-bar {
-      display: flex; align-items: center; gap: 10px;
-      background: #0a0e1a; border-radius: 8px;
-      padding: 10px 14px; margin-bottom: 14px;
+      display: flex; align-items: center; gap: 8px;
+      background: #0a0e1a; border-radius: 8px; padding: 9px 12px; margin-bottom: 12px;
     }
     .ap { text-align: center; }
-    .ap-code {
-      font-family: var(--mono); font-size: 20px;
-      font-weight: 700; color: #f0f9ff; line-height: 1;
-    }
-    .ap-name { font-size: 10px; color: var(--dim); margin-top: 2px; }
-    .route-mid { flex: 1; display: flex; align-items: center; justify-content: center; }
-    .route-line {
-      flex: 1; height: 1px; background: var(--border); position: relative;
-    }
-    .route-plane { font-size: 16px; margin: 0 6px; }
+    .ap-code { font-family: var(--mono); font-size: 18px; font-weight: 700; color: #f0f9ff; line-height: 1; }
+    .ap-name { font-size: 9px; color: var(--dim); margin-top: 2px; }
+    .route-mid { flex: 1; display: flex; align-items: center; }
+    .route-line { flex: 1; height: 1px; background: var(--bdr); }
+    .route-plane { font-size: 14px; margin: 0 5px; }
 
+    .sec-label {
+      font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px;
+      color: var(--dim); margin: 10px 0 7px;
+    }
     .stats {
-      display: grid; grid-template-columns: repeat(3, 1fr);
-      gap: 8px; margin-bottom: 14px;
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-bottom: 10px;
     }
-    .stat {
-      background: #0a0e1a; border-radius: 8px; padding: 10px 12px;
-    }
-    .stat-label {
-      font-size: 9px; text-transform: uppercase;
-      letter-spacing: 1.2px; color: var(--dim); margin-bottom: 3px;
-    }
-    .stat-value {
-      font-family: var(--mono); font-size: 18px;
-      font-weight: 600; color: var(--text); line-height: 1;
-    }
-    .stat-sub { font-size: 10px; color: var(--dim); margin-top: 2px; }
+    .stat { background: #0a0e1a; border-radius: 8px; padding: 9px 11px; }
+    .stat-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--dim); margin-bottom: 3px; }
+    .stat-value { font-family: var(--mono); font-size: 17px; font-weight: 600; color: var(--text); line-height: 1; }
+    .stat-sub   { font-size: 10px; color: var(--dim); margin-top: 2px; }
 
-    .badges { display: flex; flex-wrap: wrap; gap: 5px; }
+    .badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
     .badge {
-      font-size: 11px; padding: 3px 8px;
-      border-radius: 5px; background: #111827;
-      border: 1px solid var(--border); color: var(--muted);
-      white-space: nowrap;
+      font-size: 10.5px; padding: 2px 7px; border-radius: 4px;
+      background: #111827; border: 1px solid var(--bdr); color: var(--muted); white-space: nowrap;
     }
     .badge.hi { border-color: var(--amber); color: var(--amber); background: #1c1400; }
 
     /* ── Map card ── */
     .map-card {
-      grid-column: 2; grid-row: 1 / 3;
-      padding: 14px; min-height: 480px;
+      grid-column: 2; grid-row: 1 / 3; padding: 13px; min-height: 480px;
+      display: flex; flex-direction: column;
     }
-    #map {
-      flex: 1; border-radius: 8px; overflow: hidden;
-      min-height: 400px;
-    }
+    #map { flex: 1; border-radius: 8px; overflow: hidden; min-height: 400px; }
 
     /* ── Queue card ── */
     .queue { grid-row: 2; overflow: hidden; }
-
     .fl-row {
-      display: flex; align-items: center; gap: 10px;
-      padding: 9px 0; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 9px;
+      padding: 8px 0; border-bottom: 1px solid var(--bdr);
     }
     .fl-row:last-child { border-bottom: none; }
-
     .fl-tag {
-      font-size: 9px; font-weight: 700; padding: 2px 7px;
+      font-size: 9px; font-weight: 700; padding: 2px 6px;
       border-radius: 4px; text-transform: uppercase; white-space: nowrap;
     }
     .tag-near    { background: #052e16; color: var(--green); }
@@ -192,35 +154,29 @@
     .tag-far     { background: #12161f; color: var(--dim); }
 
     .fl-info { flex: 1; min-width: 0; }
-    .fl-cs {
-      font-family: var(--mono); font-size: 13px; font-weight: 600;
-    }
-    .fl-airline { font-size: 11px; color: var(--dim); }
+    .fl-cs { font-family: var(--mono); font-size: 12.5px; font-weight: 600; }
+    .fl-al { font-size: 10.5px; color: var(--dim); }
     .fl-right { text-align: right; flex-shrink: 0; }
-    .fl-alt { font-family: var(--mono); font-size: 12px; }
+    .fl-eta { font-size: 12px; font-weight: 700; color: var(--amber); font-family: var(--mono); }
+    .fl-alt { font-family: var(--mono); font-size: 11.5px; }
     .fl-spd { font-size: 10px; color: var(--dim); }
 
-    /* ── Empty / Error states ── */
+    /* ── States ── */
     .empty {
       flex: 1; display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      color: var(--dim); gap: 8px; padding: 30px;
-      text-align: center;
+      color: var(--dim); gap: 8px; padding: 24px; text-align: center;
     }
-    .empty .icon { font-size: 40px; opacity: .4; }
-    .empty p { font-size: 13px; }
-
-    /* ── Status bar label ── */
-    #status-label { transition: color .3s; }
-    .countdown { font-variant-numeric: tabular-nums; }
+    .empty .icon { font-size: 36px; opacity: .35; }
+    .empty p { font-size: 12.5px; }
   </style>
 </head>
 <body>
 
 <header>
   <div class="logo">
-    <span>Sky Watch</span>
-    <span class="sub">· Taraliget, Budapest</span>
+    <span class="logo-title">Sky Watch</span>
+    <span class="logo-sub">· <span id="loc-name">Taraliget</span>, Budapest</span>
   </div>
   <div class="live">
     <div class="dot" id="dot"></div>
@@ -230,13 +186,26 @@
 
 <div id="weather"><div class="w">⏳ Loading weather…</div></div>
 
+<div id="settings">
+  <div class="setting-group">
+    📍 <span id="home-coords">—</span>
+    <span class="drag-hint">(drag pin on map)</span>
+  </div>
+  <div class="setting-group">
+    📡 Radius:
+    <button class="radius-btn" data-km="50">50 km</button>
+    <button class="radius-btn" data-km="100">100 km</button>
+    <button class="radius-btn" data-km="200">200 km</button>
+  </div>
+</div>
+
 <div class="grid">
   <div class="card overhead">
     <div class="card-title">Overhead right now</div>
     <div id="overhead"><div class="empty"><div class="icon">🔭</div><p>Scanning…</p></div></div>
   </div>
 
-  <div class="card map-card" style="display:flex;flex-direction:column;gap:0;">
+  <div class="card map-card">
     <div class="card-title">Live traffic map</div>
     <div id="map"></div>
   </div>
@@ -251,12 +220,20 @@
 <script>
 'use strict';
 
-/* ─── Config ─── */
-const HOME = { lat: 47.497, lon: 18.957, name: 'Taraliget' };
-const BUD  = { lat: 47.4369, lon: 19.2559, icao: 'LHBP', iata: 'BUD', name: 'Budapest' };
-const CLOSE_KM  = 15;    // distance threshold for "overhead" label
-const REFRESH_S = 60;    // seconds between flight updates
-const WEATHER_REFRESH_S = 300;
+/* ─── Persistent config (localStorage) ─── */
+function loadConfig() {
+  try { return JSON.parse(localStorage.getItem('sky-config')) || {}; } catch(e) { return {}; }
+}
+function saveConfig() {
+  try { localStorage.setItem('sky-config', JSON.stringify({ lat: HOME.lat, lon: HOME.lon, name: HOME.name, scanKm: SCAN_KM })); } catch(e) {}
+}
+
+const cfg = loadConfig();
+let HOME = { lat: cfg.lat || 47.497, lon: cfg.lon || 18.957, name: cfg.name || 'Taraliget' };
+let SCAN_KM = cfg.scanKm || 100;
+
+const BUD = { lat: 47.4369, lon: 19.2559, iata: 'BUD', name: 'Budapest' };
+const REFRESH_S = 60;
 
 /* ─── Lookup tables ─── */
 const AIRLINES = {
@@ -267,180 +244,164 @@ const AIRLINES = {
   TOM:'TUI Airways', TCX:'Thomas Cook Airlines', MXD:'Enter Air',
   TRA:'Transavia', THY:'Turkish Airlines', UAE:'Emirates',
   SVA:'Saudia', QTR:'Qatar Airways', ETD:'Etihad Airways',
-  SWR:'Swiss International', BEL:'Brussels Airlines',
-  CSN:'China Southern', CCA:'Air China', FIN:'Finnair',
+  SWR:'Swiss International', BEL:'Brussels Airlines', FIN:'Finnair',
+  CSN:'China Southern', CCA:'Air China',
   AAL:'American Airlines', UAL:'United Airlines', DAL:'Delta Air Lines',
-  ROU:'Romania', WUK:'Wizz Air UK', TVF:'Transavia France',
-  EXS:'Jet2', WF:'Widerøe', SK:'SAS', AY:'Finnair',
+  WUK:'Wizz Air UK', TVF:'Transavia France', EXS:'Jet2',
   W6:'Wizz Air', FR:'Ryanair', U2:'easyJet', LH:'Lufthansa',
   BA:'British Airways', AF:'Air France', OS:'Austrian',
 };
 
+// ws = wingspan (m), len = fuselage length (m), eng = number of engines
 const AIRCRAFT = {
-  A318:{ name:'Airbus A318',        pax:107,  cat:'medium' },
-  A319:{ name:'Airbus A319',        pax:124,  cat:'medium' },
-  A320:{ name:'Airbus A320',        pax:150,  cat:'medium' },
-  A321:{ name:'Airbus A321',        pax:185,  cat:'medium' },
-  A20N:{ name:'Airbus A320neo',     pax:150,  cat:'medium' },
-  A21N:{ name:'Airbus A321neo',     pax:180,  cat:'medium' },
-  A19N:{ name:'Airbus A319neo',     pax:120,  cat:'medium' },
-  A332:{ name:'Airbus A330-200',    pax:250,  cat:'heavy'  },
-  A333:{ name:'Airbus A330-300',    pax:277,  cat:'heavy'  },
-  A339:{ name:'Airbus A330-900neo', pax:260,  cat:'heavy'  },
-  A359:{ name:'Airbus A350-900',    pax:300,  cat:'heavy'  },
-  A35K:{ name:'Airbus A350-1000',   pax:350,  cat:'heavy'  },
-  A388:{ name:'Airbus A380-800',    pax:555,  cat:'super'  },
-  B733:{ name:'Boeing 737-300',     pax:128,  cat:'medium' },
-  B734:{ name:'Boeing 737-400',     pax:150,  cat:'medium' },
-  B735:{ name:'Boeing 737-500',     pax:122,  cat:'medium' },
-  B736:{ name:'Boeing 737-600',     pax:119,  cat:'medium' },
-  B737:{ name:'Boeing 737-700',     pax:128,  cat:'medium' },
-  B738:{ name:'Boeing 737-800',     pax:162,  cat:'medium' },
-  B739:{ name:'Boeing 737-900',     pax:177,  cat:'medium' },
-  B37M:{ name:'Boeing 737 MAX 7',   pax:138,  cat:'medium' },
-  B38M:{ name:'Boeing 737 MAX 8',   pax:162,  cat:'medium' },
-  B39M:{ name:'Boeing 737 MAX 9',   pax:178,  cat:'medium' },
-  B752:{ name:'Boeing 757-200',     pax:200,  cat:'medium' },
-  B753:{ name:'Boeing 757-300',     pax:243,  cat:'medium' },
-  B762:{ name:'Boeing 767-200',     pax:181,  cat:'heavy'  },
-  B763:{ name:'Boeing 767-300',     pax:218,  cat:'heavy'  },
-  B772:{ name:'Boeing 777-200',     pax:314,  cat:'heavy'  },
-  B773:{ name:'Boeing 777-300',     pax:368,  cat:'heavy'  },
-  B77W:{ name:'Boeing 777-300ER',   pax:350,  cat:'heavy'  },
-  B788:{ name:'Boeing 787-8',       pax:240,  cat:'heavy'  },
-  B789:{ name:'Boeing 787-9',       pax:290,  cat:'heavy'  },
-  B78X:{ name:'Boeing 787-10',      pax:330,  cat:'heavy'  },
-  E170:{ name:'Embraer E170',       pax:72,   cat:'medium' },
-  E175:{ name:'Embraer E175',       pax:76,   cat:'medium' },
-  E190:{ name:'Embraer E190',       pax:96,   cat:'medium' },
-  E195:{ name:'Embraer E195',       pax:112,  cat:'medium' },
-  E7W: { name:'Embraer E175-E2',    pax:80,   cat:'medium' },
-  E290:{ name:'Embraer E190-E2',    pax:96,   cat:'medium' },
-  E295:{ name:'Embraer E195-E2',    pax:120,  cat:'medium' },
-  CRJ2:{ name:'Bombardier CRJ-200', pax:50,   cat:'small'  },
-  CRJ7:{ name:'Bombardier CRJ-700', pax:70,   cat:'small'  },
-  CRJ9:{ name:'Bombardier CRJ-900', pax:86,   cat:'small'  },
-  CRJX:{ name:'Bombardier CRJ-1000',pax:100,  cat:'small'  },
-  DH8D:{ name:'Dash 8 Q400',        pax:70,   cat:'small'  },
-  AT72:{ name:'ATR 72',             pax:70,   cat:'small'  },
-  AT75:{ name:'ATR 75',             pax:70,   cat:'small'  },
-  AT76:{ name:'ATR 76',             pax:76,   cat:'small'  },
-  C25A:{ name:'Citation CJ2',       pax:6,    cat:'light'  },
-  C25C:{ name:'Citation CJ4',       pax:9,    cat:'light'  },
-  C56X:{ name:'Citation XLS',       pax:9,    cat:'light'  },
-  C680:{ name:'Citation Sovereign', pax:9,    cat:'light'  },
-  PC12:{ name:'Pilatus PC-12',      pax:9,    cat:'light'  },
-  GLF5:{ name:'Gulfstream G550',    pax:14,   cat:'medium' },
-  GLF6:{ name:'Gulfstream G650',    pax:14,   cat:'medium' },
-  GLEX:{ name:'Global Express',     pax:12,   cat:'medium' },
-  GL7T:{ name:'Global 7500',        pax:14,   cat:'medium' },
-  FA7X:{ name:'Dassault Falcon 7X', pax:12,   cat:'medium' },
-  F2TH:{ name:'Dassault Falcon 2000',pax:10,  cat:'light'  },
+  A318:{ name:'Airbus A318',        pax:107,  cat:'medium', ws:34.1, len:31.4, eng:2 },
+  A319:{ name:'Airbus A319',        pax:124,  cat:'medium', ws:35.8, len:33.8, eng:2 },
+  A320:{ name:'Airbus A320',        pax:150,  cat:'medium', ws:35.8, len:37.6, eng:2 },
+  A321:{ name:'Airbus A321',        pax:185,  cat:'medium', ws:35.8, len:44.5, eng:2 },
+  A19N:{ name:'Airbus A319neo',     pax:120,  cat:'medium', ws:35.8, len:33.8, eng:2 },
+  A20N:{ name:'Airbus A320neo',     pax:150,  cat:'medium', ws:35.8, len:37.6, eng:2 },
+  A21N:{ name:'Airbus A321neo',     pax:180,  cat:'medium', ws:35.8, len:44.5, eng:2 },
+  A332:{ name:'Airbus A330-200',    pax:250,  cat:'heavy',  ws:60.3, len:58.8, eng:2 },
+  A333:{ name:'Airbus A330-300',    pax:277,  cat:'heavy',  ws:60.3, len:63.7, eng:2 },
+  A339:{ name:'Airbus A330-900neo', pax:260,  cat:'heavy',  ws:64.0, len:63.7, eng:2 },
+  A359:{ name:'Airbus A350-900',    pax:300,  cat:'heavy',  ws:64.8, len:66.8, eng:2 },
+  A35K:{ name:'Airbus A350-1000',   pax:350,  cat:'heavy',  ws:64.8, len:73.8, eng:2 },
+  A388:{ name:'Airbus A380-800',    pax:555,  cat:'super',  ws:79.8, len:72.7, eng:4 },
+  B733:{ name:'Boeing 737-300',     pax:128,  cat:'medium', ws:28.9, len:33.4, eng:2 },
+  B734:{ name:'Boeing 737-400',     pax:150,  cat:'medium', ws:28.9, len:36.5, eng:2 },
+  B737:{ name:'Boeing 737-700',     pax:128,  cat:'medium', ws:35.8, len:33.6, eng:2 },
+  B738:{ name:'Boeing 737-800',     pax:162,  cat:'medium', ws:35.8, len:39.5, eng:2 },
+  B739:{ name:'Boeing 737-900',     pax:177,  cat:'medium', ws:35.8, len:42.1, eng:2 },
+  B37M:{ name:'Boeing 737 MAX 7',   pax:138,  cat:'medium', ws:35.9, len:35.6, eng:2 },
+  B38M:{ name:'Boeing 737 MAX 8',   pax:162,  cat:'medium', ws:35.9, len:39.5, eng:2 },
+  B39M:{ name:'Boeing 737 MAX 9',   pax:178,  cat:'medium', ws:35.9, len:42.2, eng:2 },
+  B752:{ name:'Boeing 757-200',     pax:200,  cat:'medium', ws:38.1, len:47.3, eng:2 },
+  B753:{ name:'Boeing 757-300',     pax:243,  cat:'medium', ws:38.1, len:54.4, eng:2 },
+  B762:{ name:'Boeing 767-200',     pax:181,  cat:'heavy',  ws:47.6, len:48.5, eng:2 },
+  B763:{ name:'Boeing 767-300',     pax:218,  cat:'heavy',  ws:47.6, len:54.9, eng:2 },
+  B772:{ name:'Boeing 777-200',     pax:314,  cat:'heavy',  ws:60.9, len:63.7, eng:2 },
+  B773:{ name:'Boeing 777-300',     pax:368,  cat:'heavy',  ws:60.9, len:73.9, eng:2 },
+  B77W:{ name:'Boeing 777-300ER',   pax:350,  cat:'heavy',  ws:64.8, len:73.9, eng:2 },
+  B788:{ name:'Boeing 787-8',       pax:240,  cat:'heavy',  ws:60.1, len:56.7, eng:2 },
+  B789:{ name:'Boeing 787-9',       pax:290,  cat:'heavy',  ws:60.1, len:62.8, eng:2 },
+  B78X:{ name:'Boeing 787-10',      pax:330,  cat:'heavy',  ws:60.1, len:68.3, eng:2 },
+  E170:{ name:'Embraer E170',       pax:72,   cat:'medium', ws:26.0, len:29.9, eng:2 },
+  E175:{ name:'Embraer E175',       pax:76,   cat:'medium', ws:31.7, len:31.7, eng:2 },
+  E190:{ name:'Embraer E190',       pax:96,   cat:'medium', ws:28.7, len:36.2, eng:2 },
+  E195:{ name:'Embraer E195',       pax:112,  cat:'medium', ws:28.7, len:38.7, eng:2 },
+  E290:{ name:'Embraer E190-E2',    pax:96,   cat:'medium', ws:33.7, len:36.2, eng:2 },
+  E295:{ name:'Embraer E195-E2',    pax:120,  cat:'medium', ws:35.1, len:41.5, eng:2 },
+  CRJ2:{ name:'Bombardier CRJ-200', pax:50,   cat:'small',  ws:21.2, len:26.8, eng:2 },
+  CRJ7:{ name:'Bombardier CRJ-700', pax:70,   cat:'small',  ws:23.2, len:32.5, eng:2 },
+  CRJ9:{ name:'Bombardier CRJ-900', pax:86,   cat:'small',  ws:24.9, len:36.4, eng:2 },
+  CRJX:{ name:'Bombardier CRJ-1000',pax:100,  cat:'small',  ws:26.2, len:39.1, eng:2 },
+  DH8D:{ name:'Dash 8 Q400',        pax:70,   cat:'small',  ws:28.4, len:32.8, eng:2 },
+  AT72:{ name:'ATR 72',             pax:70,   cat:'small',  ws:27.1, len:27.2, eng:2 },
+  AT75:{ name:'ATR 75',             pax:70,   cat:'small',  ws:27.1, len:27.2, eng:2 },
+  AT76:{ name:'ATR 76',             pax:76,   cat:'small',  ws:27.1, len:27.2, eng:2 },
+  C25A:{ name:'Citation CJ2',       pax:6,    cat:'light',  ws:15.3, len:14.3, eng:2 },
+  C25C:{ name:'Citation CJ4',       pax:9,    cat:'light',  ws:15.5, len:16.3, eng:2 },
+  C56X:{ name:'Citation XLS',       pax:9,    cat:'light',  ws:17.1, len:15.8, eng:2 },
+  C680:{ name:'Citation Sovereign', pax:9,    cat:'light',  ws:19.2, len:17.2, eng:2 },
+  PC12:{ name:'Pilatus PC-12',      pax:9,    cat:'light',  ws:16.3, len:14.4, eng:1 },
+  GLF5:{ name:'Gulfstream G550',    pax:14,   cat:'medium', ws:30.4, len:29.4, eng:2 },
+  GLF6:{ name:'Gulfstream G650',    pax:14,   cat:'medium', ws:31.4, len:30.4, eng:2 },
+  GLEX:{ name:'Global Express',     pax:12,   cat:'medium', ws:28.7, len:30.3, eng:2 },
+  GL7T:{ name:'Global 7500',        pax:14,   cat:'medium', ws:31.4, len:32.3, eng:2 },
+  FA7X:{ name:'Dassault Falcon 7X', pax:12,   cat:'medium', ws:26.2, len:23.4, eng:3 },
+  F2TH:{ name:'Dassault Falcon 2000',pax:10,  cat:'light',  ws:21.4, len:20.2, eng:2 },
 };
 
 const WMO = {
   0:'Clear sky', 1:'Mainly clear', 2:'Partly cloudy', 3:'Overcast',
-  45:'Foggy', 48:'Depositing rime fog',
-  51:'Light drizzle', 53:'Moderate drizzle', 55:'Dense drizzle',
-  61:'Slight rain', 63:'Moderate rain', 65:'Heavy rain',
-  71:'Slight snow', 73:'Moderate snow', 75:'Heavy snow', 77:'Snow grains',
-  80:'Slight showers', 81:'Moderate showers', 82:'Violent showers',
-  85:'Slight snow showers', 86:'Heavy snow showers',
-  95:'Thunderstorm', 96:'Thunderstorm w/ hail', 99:'Thunderstorm w/ heavy hail',
+  45:'Foggy', 51:'Light drizzle', 53:'Drizzle', 55:'Heavy drizzle',
+  61:'Light rain', 63:'Rain', 65:'Heavy rain',
+  71:'Light snow', 73:'Snow', 75:'Heavy snow',
+  80:'Showers', 81:'Heavy showers', 82:'Violent showers',
+  95:'Thunderstorm', 96:'Hail & thunder',
 };
 
 /* ─── Utilities ─── */
 function haversine(la1, lo1, la2, lo2) {
-  const R = 6371, d2r = Math.PI / 180;
-  const dlat = (la2 - la1) * d2r, dlon = (lo2 - lo1) * d2r;
-  const a = Math.sin(dlat/2)**2 + Math.cos(la1*d2r)*Math.cos(la2*d2r)*Math.sin(dlon/2)**2;
+  const R = 6371, r = Math.PI/180;
+  const a = Math.sin((la2-la1)*r/2)**2 + Math.cos(la1*r)*Math.cos(la2*r)*Math.sin((lo2-lo1)*r/2)**2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
-
 function bearing(la1, lo1, la2, lo2) {
-  const d2r = Math.PI / 180;
-  const y = Math.sin((lo2-lo1)*d2r) * Math.cos(la2*d2r);
-  const x = Math.cos(la1*d2r)*Math.sin(la2*d2r) - Math.sin(la1*d2r)*Math.cos(la2*d2r)*Math.cos((lo2-lo1)*d2r);
+  const r = Math.PI/180;
+  const y = Math.sin((lo2-lo1)*r)*Math.cos(la2*r);
+  const x = Math.cos(la1*r)*Math.sin(la2*r) - Math.sin(la1*r)*Math.cos(la2*r)*Math.cos((lo2-lo1)*r);
   return (Math.atan2(y,x)*180/Math.PI + 360) % 360;
 }
+function bearingDiff(a, b) { return Math.abs((a-b+540)%360-180); }
 
-function bearingDiff(a, b) {
-  const d = Math.abs((a - b + 540) % 360 - 180);
-  return d;
-}
-
-// Display in metric; API gives feet / knots / ft-per-min
 const ftToM    = ft  => Math.round(ft * 0.3048);
 const ktsToKmh = kt  => Math.round(kt * 1.852);
 const fpmToMpm = fpm => Math.round(Math.abs(fpm) * 0.3048);
-function altStr(altFt) {
-  if (!altFt) return '—';
-  const m = ftToM(altFt);
-  return m >= 1000 ? (m / 1000).toFixed(1) + ' km' : m.toLocaleString() + ' m';
+
+function altStr(ft) {
+  if (!ft) return '—';
+  const m = ftToM(ft);
+  return m >= 1000 ? (m/1000).toFixed(1) + ' km' : m.toLocaleString() + ' m';
 }
+function altM(ft) { return ft ? ftToM(ft) : null; }
 
 function headingCard(deg) {
-  const dirs = ['N','NE','E','SE','S','SW','W','NW'];
-  return dirs[Math.round(((deg % 360) + 360) % 360 / 45) % 8];
+  return ['N','NE','E','SE','S','SW','W','NW'][Math.round(((deg%360)+360)%360/45)%8];
 }
-
-function airline(cs) {
+function airlineName(cs) {
   if (!cs) return null;
-  return AIRLINES[cs.slice(0,3).toUpperCase()] ||
-         AIRLINES[cs.slice(0,2).toUpperCase()] || null;
+  return AIRLINES[cs.slice(0,3).toUpperCase()] || AIRLINES[cs.slice(0,2).toUpperCase()] || null;
+}
+function aircraftInfo(code) { return code ? AIRCRAFT[code.toUpperCase()] : null; }
+
+function vertStr(vr) {
+  if (!vr) return '';
+  if (vr >  200) return `↑ ${fpmToMpm(vr)} m/min`;
+  if (vr < -200) return `↓ ${fpmToMpm(vr)} m/min`;
+  return '→ Level';
 }
 
-function aircraft(code) {
-  if (!code) return null;
-  return AIRCRAFT[code.toUpperCase()] || null;
-}
-
-function inferStatus(plane, distKm) {
-  const toBUD = bearing(plane.lat, plane.lon, BUD.lat, BUD.lon);
-  const diff  = bearingDiff(plane.heading || 0, toBUD);
-  const altFt = plane.baro_alt || 0; // already feet
-  const vr    = plane.vert_rate || 0; // ft/min
-
-  if (distKm < 50) {
-    if (diff < 25 && vr < -100) return 'Approaching BUD';
-    if (diff > 150 && vr > 100) return 'Departed from BUD';
-  }
-  if (vr < -200) return 'Descending';
-  if (vr >  200) return 'Climbing';
-  if (altFt > 28000) return 'Cruise';
-  return 'Overflying';
-}
-
-function classifyBUD(plane) {
-  const altM    = ftToM(plane.baro_alt || 0);
-  const vr      = plane.vert_rate || 0; // ft/min
-  const distBUD = haversine(plane.lat, plane.lon, BUD.lat, BUD.lon);
-  if (distBUD < 120 && vr < -200 && altM < 9500) return 'arriving';
-  if (distBUD < 90  && vr >  400 && altM < 8000) return 'departing';
-  if (altM > 9000) return 'transit';
+function classifyBUD(p) {
+  const m = altM(p.baro_alt) || 0;
+  const vr = p.vert_rate || 0;
+  const d  = haversine(p.lat, p.lon, BUD.lat, BUD.lon);
+  if (d < 120 && vr < -200 && m < 9500) return 'arriving';
+  if (d < 90  && vr >  400 && m < 8000) return 'departing';
+  if (m > 9000) return 'transit';
   return 'other';
 }
 
-/* ─── Caches ─── */
+// Closest Point of Approach — returns minutes until overhead (<= 6 km), or null
+function etaOverhead(p) {
+  if (!p.lat || !p.lon || !p.velocity || !p.heading) return null;
+  const spKmMin = ktsToKmh(p.velocity) / 60;
+  const hdg     = p.heading * Math.PI / 180;
+  const vE = spKmMin * Math.sin(hdg);
+  const vN = spKmMin * Math.cos(hdg);
+  const cosLat = Math.cos(HOME.lat * Math.PI / 180);
+  const dE = (p.lon - HOME.lon) * 111.32 * cosLat;
+  const dN = (p.lat - HOME.lat) * 110.57;
+  const denom = vE*vE + vN*vN;
+  if (!denom) return null;
+  const t = -(dE*vE + dN*vN) / denom;
+  if (t < 0.3 || t > 60) return null;
+  const cpaDist = Math.sqrt((dE+vE*t)**2 + (dN+vN*t)**2);
+  if (cpaDist > 6) return null;
+  return Math.round(t);
+}
+
+/* ─── Photo cache ─── */
 const photoCache = new Map();
 
-/* ─── Map setup ─── */
+/* ─── Map ─── */
 const map = L.map('map', { zoomControl: true }).setView([HOME.lat, HOME.lon], 9);
-
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
   attribution: '© OpenStreetMap contributors © CARTO',
   subdomains: 'abcd', maxZoom: 19,
 }).addTo(map);
 
-// Home marker
-L.marker([HOME.lat, HOME.lon], {
-  icon: L.divIcon({
-    html: '<div style="width:12px;height:12px;background:#f59e0b;border-radius:50%;border:2px solid #fff;box-shadow:0 0 6px #f59e0b88;"></div>',
-    iconSize:[12,12], iconAnchor:[6,6], className:'',
-  }),
-}).bindPopup('<b>📍 Taraliget</b>').addTo(map);
-
-// BUD airport label
+// BUD label
 L.marker([BUD.lat, BUD.lon], {
   icon: L.divIcon({
     html: '<div style="background:#1e3a5f;color:#60a5fa;padding:2px 7px;border-radius:5px;font-size:11px;font-weight:700;border:1px solid #2d5080;white-space:nowrap;">✈ BUD</div>',
@@ -448,39 +409,52 @@ L.marker([BUD.lat, BUD.lon], {
   }),
 }).bindPopup('<b>Budapest Liszt Ferenc (BUD)</b>').addTo(map);
 
-// Home range circle (subtle)
-L.circle([HOME.lat, HOME.lon], { radius: CLOSE_KM*1000, color:'#f59e0b', weight:1, fillOpacity:.04, dashArray:'4,6' }).addTo(map);
+// Draggable home marker
+const homeIcon = L.divIcon({
+  html: '<div style="width:14px;height:14px;background:#f59e0b;border-radius:50%;border:2px solid #fff;box-shadow:0 0 8px #f59e0b88;cursor:grab;" title="Drag to set location"></div>',
+  iconSize:[14,14], iconAnchor:[7,7], className:'',
+});
+const homeMarker = L.marker([HOME.lat, HOME.lon], { icon: homeIcon, draggable: true })
+  .bindTooltip('Drag to set your location', { permanent: false, direction: 'top' })
+  .addTo(map);
 
-let planeLayer  = L.layerGroup().addTo(map);
-let routeLayer  = L.layerGroup().addTo(map);
+// Scan-radius circle
+const homeCircle = L.circle([HOME.lat, HOME.lon], {
+  radius: SCAN_KM * 1000, color:'#f59e0b', weight:1, fillOpacity:.03, dashArray:'5,7',
+}).addTo(map);
 
-function planeIcon(hdg, highlight) {
-  const clr  = highlight ? '#f59e0b' : '#3b82f6';
-  const size = highlight ? 22 : 16;
+homeMarker.on('dragend', function(e) {
+  const ll   = e.target.getLatLng();
+  HOME.lat   = Math.round(ll.lat * 10000) / 10000;
+  HOME.lon   = Math.round(ll.lng * 10000) / 10000;
+  HOME.name  = 'Custom';
+  homeCircle.setLatLng([HOME.lat, HOME.lon]);
+  saveConfig();
+  updateSettingsUI();
+  refresh();
+});
+
+let planeLayer = L.layerGroup().addTo(map);
+let routeLayer = L.layerGroup().addTo(map);
+
+function planeIcon(hdg, hi) {
+  const c = hi ? '#f59e0b' : '#3b82f6';
+  const s = hi ? 22 : 16;
   return L.divIcon({
-    html: `<div style="font-size:${size}px;color:${clr};transform:rotate(${hdg}deg);line-height:1;filter:drop-shadow(0 0 3px ${clr}44);">✈</div>`,
-    iconSize:[size,size], iconAnchor:[size/2,size/2], className:'',
-    zIndexOffset: highlight ? 500 : 0,
+    html: `<div style="font-size:${s}px;color:${c};transform:rotate(${hdg}deg);line-height:1;filter:drop-shadow(0 0 3px ${c}44);">✈</div>`,
+    iconSize:[s,s], iconAnchor:[s/2,s/2], className:'',
+    zIndexOffset: hi ? 500 : 0,
   });
 }
 
 function updateMap(planes) {
   planeLayer.clearLayers();
   routeLayer.clearLayers();
-
-  const airborne = planes.filter(p => !p.on_ground && p.lat && p.lon && p.baro_alt > 100);
-  airborne.sort((a,b) => a._dist - b._dist);
-
-  airborne.forEach((p, i) => {
+  planes.forEach((p, i) => {
     const hi = i === 0;
-    const popup = `<b>${p.callsign || p.icao24}</b><br>
-      ${altStr(p.baro_alt)} &nbsp;·&nbsp; ${p.velocity ? ktsToKmh(p.velocity)+' km/h' : '?'}
-      ${p._airline ? '<br>' + p._airline : ''}`;
-
     L.marker([p.lat, p.lon], { icon: planeIcon(p.heading||0, hi) })
-      .bindPopup(popup)
+      .bindPopup(`<b>${p.callsign || p.icao24}</b><br>${altStr(p.baro_alt)} · ${p.velocity ? ktsToKmh(p.velocity)+' km/h' : '?'}${p._al ? '<br>'+p._al : ''}`)
       .addTo(planeLayer);
-
     if (hi) {
       L.polyline([[p.lat,p.lon],[BUD.lat,BUD.lon]], {
         color:'#f59e0b', weight:1, dashArray:'4,8', opacity:.35,
@@ -489,18 +463,15 @@ function updateMap(planes) {
   });
 }
 
-/* ─── API calls ─── */
-// Primary: adsb.fi — free, open CORS, native ft/kts/ftpm units, includes type+reg
-// Fallback: airplanes.live — same format
+/* ─── API ─── */
 async function fetchFlights() {
-  const DIST_NM = 50; // ~92 km
-  // airplanes.live has Access-Control-Allow-Origin: * so it works from any browser origin
-  const endpoints = [
-    `https://api.airplanes.live/v2/point/${HOME.lat}/${HOME.lon}/${DIST_NM}`,
-    `https://opendata.adsb.fi/api/v2/lat/${HOME.lat}/lon/${HOME.lon}/dist/${DIST_NM}`,
+  const nm = Math.max(10, Math.round(SCAN_KM / 1.852));
+  const urls = [
+    `https://api.airplanes.live/v2/point/${HOME.lat}/${HOME.lon}/${nm}`,
+    `https://opendata.adsb.fi/api/v2/lat/${HOME.lat}/lon/${HOME.lon}/dist/${nm}`,
   ];
   let last;
-  for (const url of endpoints) {
+  for (const url of urls) {
     try {
       const r = await fetch(url);
       if (!r.ok) { last = new Error(`HTTP ${r.status}`); continue; }
@@ -508,25 +479,20 @@ async function fetchFlights() {
       return (d.ac || []).map(a => ({
         icao24:    a.hex,
         callsign:  a.flight?.trim() || null,
-        country:   null,
-        lon:       a.lon,
-        lat:       a.lat,
-        baro_alt:  a.alt_baro === 'ground' ? 0 : (a.alt_baro || 0), // feet
+        lon: a.lon, lat: a.lat,
+        baro_alt:  a.alt_baro === 'ground' ? 0 : (a.alt_baro || 0),
         on_ground: a.alt_baro === 'ground',
-        velocity:  a.gs   || 0,   // knots
+        velocity:  a.gs    || 0,
         heading:   a.track || 0,
-        vert_rate: a.baro_rate || 0, // ft/min
-        geo_alt:   a.alt_geom,
+        vert_rate: a.baro_rate || 0,
         squawk:    a.squawk,
-        type_code: a.t  || null,   // ICAO type designator e.g. A320
-        reg:       a.r  || null,   // registration e.g. HA-LPT
-        operator:  a.oper || null, // operator name
-        category:  a.category || null, // A1–A7
-        seen:      a.seen || 0,    // seconds since last update
+        type_code: a.t    || null,
+        reg:       a.r    || null,
+        operator:  a.oper || null,
       }));
     } catch(e) { last = e; }
   }
-  throw last || new Error('All flight APIs failed');
+  throw last || new Error('All APIs failed');
 }
 
 async function fetchPhoto(reg) {
@@ -537,248 +503,241 @@ async function fetchPhoto(reg) {
     if (r.ok) {
       const d = await r.json();
       const url = d.photos?.[0]?.thumbnail_large?.src || d.photos?.[0]?.thumbnail?.src || null;
-      photoCache.set(reg, url);
-      return url;
+      photoCache.set(reg, url); return url;
     }
   } catch(e) {}
-  photoCache.set(reg, null);
-  return null;
+  photoCache.set(reg, null); return null;
 }
 
 async function fetchWeather() {
   const r = await fetch(
     `https://api.open-meteo.com/v1/forecast?latitude=${HOME.lat}&longitude=${HOME.lon}` +
-    `&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,` +
-    `weather_code,visibility,cloud_cover&wind_speed_unit=kmh`
+    `&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,weather_code,visibility,cloud_cover&wind_speed_unit=kmh`
   );
-  if (!r.ok) throw new Error(`Weather HTTP ${r.status}`);
+  if (!r.ok) throw new Error('Weather failed');
   return (await r.json()).current;
 }
 
-/* ─── Render helpers ─── */
+/* ─── Renderers ─── */
 function renderWeather(w) {
-  const desc = WMO[w.weather_code] || 'Unknown';
-  const wdirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
-  const dir = wdirs[Math.round(w.wind_direction_10m / 22.5) % 16];
-  const vis = w.visibility >= 10000 ? '10+ km' : (w.visibility/1000).toFixed(1)+' km';
+  const desc  = WMO[w.weather_code] || 'Unknown';
+  const dirs  = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  const wdir  = dirs[Math.round(w.wind_direction_10m/22.5)%16];
+  const vis   = w.visibility >= 10000 ? '10+ km' : (w.visibility/1000).toFixed(1)+' km';
   document.getElementById('weather').innerHTML = `
     <div class="w">🌡️ ${w.temperature_2m}°C</div>
     <div class="w">🌤️ ${desc}</div>
     <div class="w">☁️ ${w.cloud_cover}%</div>
-    <div class="w">💧 ${w.relative_humidity_2m}% humidity</div>
-    <div class="w">💨 ${w.wind_speed_10m} km/h ${dir}</div>
-    <div class="w">👁 ${vis} visibility</div>
-  `;
+    <div class="w">💧 ${w.relative_humidity_2m}%</div>
+    <div class="w">💨 ${w.wind_speed_10m} km/h ${wdir}</div>
+    <div class="w">👁 ${vis}</div>`;
 }
 
-function vertSymbol(vr) { // vr in ft/min, display in m/min
-  if (!vr) return '';
-  if (vr >  200) return `↑ ${fpmToMpm(vr)} m/min`;
-  if (vr < -200) return `↓ ${fpmToMpm(vr)} m/min`;
-  return '→ Level';
-}
+function renderOverhead(p) {
+  const m     = altM(p.baro_alt);
+  const kmh   = p.velocity ? ktsToKmh(p.velocity) : null;
+  const ac    = aircraftInfo(p.type_code);
+  const model = ac?.name || p.type_code || 'Unknown type';
+  const op    = airlineName(p.callsign) || p.operator || '—';
+  const reg   = p.reg;
+  const pax   = ac?.pax;
+  const vert  = vertStr(p.vert_rate);
+  const dist  = p._dist ? `${Math.round(p._dist)} km away` : '';
 
-function renderOverhead(plane) {
-  const altFt    = plane.baro_alt || null;
-  const altM     = altFt ? ftToM(altFt) : null;
-  const speedKmh = plane.velocity ? ktsToKmh(plane.velocity) : null;
+  const acSpecs = (ac?.ws) ? `
+    <div class="sec-label">Airframe</div>
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Wingspan</div>
+        <div class="stat-value">${ac.ws}</div>
+        <div class="stat-sub">m</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Length</div>
+        <div class="stat-value">${ac.len}</div>
+        <div class="stat-sub">m</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Engines</div>
+        <div class="stat-value">${ac.eng}</div>
+        <div class="stat-sub">${ac.eng === 1 ? 'turboprop' : ac.eng > 2 ? 'turbofans' : 'turbofans'}</div>
+      </div>
+    </div>` : '';
 
-  const typeCode  = plane.type_code || null;
-  const acInfo    = aircraft(typeCode);
-  const modelName = acInfo?.name || typeCode || 'Unknown type';
-  const pax       = acInfo?.pax;
-  const reg       = plane.reg;
-  const op        = airline(plane.callsign) || plane.operator || plane.country || '—';
-  const status    = inferStatus(plane, plane._dist);
-  const distStr   = plane._dist < 200 ? `${Math.round(plane._dist)} km away` : '';
-
-  const html = `
-    <div id="photo-box" class="photo-placeholder">✈️</div>
-    <div class="callsign">${plane.callsign || plane.icao24.toUpperCase()}</div>
-    <div class="airline">${op}</div>
-    <div class="model">${modelName}${reg ? ' · ' + reg : ''}</div>
+  document.getElementById('overhead').innerHTML = `
+    <div class="photo-ph" id="photo-box">✈️</div>
+    <div class="callsign">${p.callsign || p.icao24.toUpperCase()}</div>
+    <div class="op-name">${op}</div>
+    <div class="ac-model">${model}${reg ? ' · ' + reg : ''}</div>
 
     <div class="route-bar">
-      <div class="ap">
-        <div class="ap-code">–</div>
-        <div class="ap-name">Origin</div>
-      </div>
-      <div class="route-mid">
-        <div class="route-line"></div>
-        <div class="route-plane">✈</div>
-        <div class="route-line"></div>
-      </div>
-      <div class="ap">
-        <div class="ap-code">–</div>
-        <div class="ap-name">Destination</div>
-      </div>
+      <div class="ap"><div class="ap-code">–</div><div class="ap-name">Origin</div></div>
+      <div class="route-mid"><div class="route-line"></div><div class="route-plane">✈</div><div class="route-line"></div></div>
+      <div class="ap"><div class="ap-code">–</div><div class="ap-name">Destination</div></div>
     </div>
 
+    <div class="sec-label">In flight</div>
     <div class="stats">
       <div class="stat">
         <div class="stat-label">Altitude</div>
-        <div class="stat-value">${altM ? altM.toLocaleString() : '—'}</div>
-        <div class="stat-sub">${altM ? 'm' : ''}</div>
+        <div class="stat-value">${m ? m.toLocaleString() : '—'}</div>
+        <div class="stat-sub">${m ? 'm' : ''}</div>
       </div>
       <div class="stat">
         <div class="stat-label">Speed</div>
-        <div class="stat-value">${speedKmh ?? '—'}</div>
-        <div class="stat-sub">${speedKmh ? 'km/h' : ''}</div>
+        <div class="stat-value">${kmh ?? '—'}</div>
+        <div class="stat-sub">${kmh ? 'km/h' : ''}</div>
       </div>
       <div class="stat">
         <div class="stat-label">Heading</div>
-        <div class="stat-value">${plane.heading ? Math.round(plane.heading) + '°' : '—'}</div>
-        <div class="stat-sub">${plane.heading ? headingCard(plane.heading) : ''}</div>
+        <div class="stat-value">${p.heading ? Math.round(p.heading)+'°' : '—'}</div>
+        <div class="stat-sub">${p.heading ? headingCard(p.heading) : ''}</div>
       </div>
     </div>
 
-    <div class="badges">
-      ${pax ? `<span class="badge hi">👥 ~${pax} passengers</span>` : ''}
-      <span class="badge">📍 ${distStr || '—'}</span>
-      <span class="badge">📶 ${status}</span>
-      ${plane.vert_rate ? `<span class="badge">${vertSymbol(plane.vert_rate)}</span>` : ''}
-      ${typeCode ? `<span class="badge">🛩 ${typeCode}</span>` : ''}
-      ${plane.squawk ? `<span class="badge">📡 ${plane.squawk}</span>` : ''}
-      ${plane.country ? `<span class="badge">🌍 ${plane.country}</span>` : ''}
-      ${altM && altM > 8500 ? '<span class="badge">☁️ Cruising altitude</span>' : ''}
-      ${altM && altM < 1500 ? '<span class="badge">🛬 Low — on approach?</span>' : ''}
-    </div>
-  `;
+    ${acSpecs}
 
-  document.getElementById('overhead').innerHTML = html;
+    <div class="badges">
+      ${pax  ? `<span class="badge hi">👥 ~${pax} passengers</span>` : ''}
+      ${dist ? `<span class="badge">📍 ${dist}</span>` : ''}
+      ${vert ? `<span class="badge">${vert}</span>` : ''}
+      ${p.type_code ? `<span class="badge">🛩 ${p.type_code}</span>` : ''}
+      ${p.squawk    ? `<span class="badge">📡 ${p.squawk}</span>`    : ''}
+      ${m && m > 8500 ? '<span class="badge">☁️ Cruising</span>'      : ''}
+      ${m && m < 1500 ? '<span class="badge">🛬 Low approach</span>'  : ''}
+    </div>`;
 
   fetchPhoto(reg).then(url => {
     if (!url) return;
     const box = document.getElementById('photo-box');
-    if (box) box.outerHTML = `<img class="plane-photo" src="${url}" alt="Aircraft photo" onerror="this.remove()">`;
+    if (box) box.outerHTML = `<img class="plane-photo" src="${url}" alt="Aircraft" onerror="this.remove()">`;
   });
 }
 
-function renderQueue(planes) {
-  const airborne = planes
-    .filter(p => !p.on_ground && p.lat && p.lon && p.baro_alt > 100)
-    .sort((a,b) => a._dist - b._dist)
-    .slice(0, 12);
+const BUD_TAG = {
+  arriving:  { css:'tag-arr',     label:'Arriving BUD'  },
+  departing: { css:'tag-dep',     label:'Departing BUD' },
+  transit:   { css:'tag-transit', label:'High transit'  },
+};
 
-  if (!airborne.length) {
+function renderQueue(planes) {
+  if (!planes.length) {
     document.getElementById('queue').innerHTML =
       '<div class="empty"><div class="icon">🌙</div><p>No airborne traffic nearby</p></div>';
     return;
   }
-
-  const BUD_TAG = {
-    arriving:  { css: 'tag-arr',     label: 'Arriving BUD' },
-    departing: { css: 'tag-dep',     label: 'Departing BUD' },
-    transit:   { css: 'tag-transit', label: 'High transit' },
-    other:     null,
-  };
-
-  document.getElementById('queue').innerHTML = airborne.map(p => {
-    const al      = airline(p.callsign) || p.operator || p.country || '—';
-    const altM    = p.baro_alt ? ftToM(p.baro_alt) : null;
-    const speedKmh = p.velocity ? ktsToKmh(p.velocity) : null;
-    const budClass = p._bud;
-    const budTag   = BUD_TAG[budClass];
-    const isClose  = p._dist <= CLOSE_KM;
+  document.getElementById('queue').innerHTML = planes.map(p => {
+    const al    = airlineName(p.callsign) || p.operator || '—';
+    const m     = p.baro_alt ? ftToM(p.baro_alt) : null;
+    const kmh   = p.velocity ? ktsToKmh(p.velocity) : null;
+    const eta   = p._eta;
+    const bt    = BUD_TAG[p._bud];
+    const close = p._dist <= 15;
 
     let tagCss, tagLabel;
-    if (isClose) {
-      tagCss = 'tag-near'; tagLabel = Math.round(p._dist) + ' km';
-    } else if (budTag) {
-      tagCss = budTag.css; tagLabel = budTag.label;
-    } else {
-      tagCss = 'tag-far'; tagLabel = Math.round(p._dist) + ' km';
-    }
+    if (close)     { tagCss = 'tag-near'; tagLabel = Math.round(p._dist)+' km'; }
+    else if (bt)   { tagCss = bt.css;     tagLabel = bt.label; }
+    else           { tagCss = 'tag-far';  tagLabel = Math.round(p._dist)+' km'; }
 
     return `
       <div class="fl-row">
         <span class="fl-tag ${tagCss}">${tagLabel}</span>
         <div class="fl-info">
           <div class="fl-cs">${p.callsign || p.icao24.toUpperCase()}</div>
-          <div class="fl-airline">${al}</div>
+          <div class="fl-al">${al}</div>
         </div>
         <div class="fl-right">
-          <div class="fl-alt">${altM ? altM.toLocaleString() + ' m' : '—'}</div>
-          <div class="fl-spd">${speedKmh ? speedKmh + ' km/h' : ''}</div>
+          ${eta !== null ? `<div class="fl-eta">⏱ ${eta < 1 ? 'overhead now' : 'in '+eta+' min'}</div>` : ''}
+          <div class="fl-alt">${m ? m.toLocaleString()+' m' : '—'}</div>
+          <div class="fl-spd">${kmh ? kmh+' km/h' : ''}</div>
         </div>
       </div>`;
   }).join('');
 }
 
 /* ─── Countdown ─── */
-let countdown = REFRESH_S;
-let countdownId = null;
-
+let countdown = REFRESH_S, cdTimer = null;
 function startCountdown() {
-  clearInterval(countdownId);
+  clearInterval(cdTimer);
   countdown = REFRESH_S;
-  countdownId = setInterval(() => {
+  cdTimer = setInterval(() => {
     countdown--;
     const el = document.getElementById('status-label');
-    if (el && countdown > 0)
-      el.textContent = `Refreshes in ${countdown}s`;
+    if (el && countdown > 0) el.textContent = `Refreshes in ${countdown}s`;
   }, 1000);
 }
 
-/* ─── Main refresh loop ─── */
+/* ─── Main loop ─── */
 async function refresh() {
-  const dot    = document.getElementById('dot');
-  const status = document.getElementById('status-label');
-  dot.className    = 'dot';
-  status.textContent = 'Fetching…';
-
+  document.getElementById('dot').className = 'dot';
+  document.getElementById('status-label').textContent = 'Fetching…';
   try {
     const planes = await fetchFlights();
 
-    // Annotate distance + airline + BUD classification
     planes.forEach(p => {
-      p._dist    = (p.lat && p.lon) ? haversine(HOME.lat, HOME.lon, p.lat, p.lon) : Infinity;
-      p._airline = airline(p.callsign);
-      p._bud     = (p.lat && p.lon) ? classifyBUD(p) : 'other';
+      p._dist = (p.lat && p.lon) ? haversine(HOME.lat, HOME.lon, p.lat, p.lon) : Infinity;
+      p._al   = airlineName(p.callsign);
+      p._bud  = (p.lat && p.lon) ? classifyBUD(p) : 'other';
+      p._eta  = (!p.on_ground && p.lat && p.lon) ? etaOverhead(p) : null;
     });
 
     const airborne = planes
       .filter(p => !p.on_ground && p.lat && p.lon && p.baro_alt > 100)
-      .sort((a,b) => a._dist - b._dist);
+      .sort((a, b) => a._dist - b._dist);
 
     updateMap(airborne);
-    renderQueue(airborne);
+    renderQueue(airborne.slice(0, 12));
 
-    if (airborne.length > 0) {
+    if (airborne.length) {
       renderOverhead(airborne[0]);
     } else {
       document.getElementById('overhead').innerHTML =
-        '<div class="empty"><div class="icon">🌙</div><p>No aircraft detected overhead right now</p></div>';
+        '<div class="empty"><div class="icon">🌙</div><p>No aircraft detected nearby</p></div>';
     }
 
     const now = new Date().toLocaleTimeString('hu-HU', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
-    status.textContent = `Updated ${now}`;
-    dot.className = 'dot';
+    document.getElementById('status-label').textContent = `Updated ${now}`;
+    document.getElementById('dot').className = 'dot';
     startCountdown();
-
   } catch(e) {
     console.error(e);
-    dot.className = 'dot error';
-    status.textContent = 'Error — retrying in 60s';
+    document.getElementById('dot').className = 'dot err';
+    document.getElementById('status-label').textContent = 'Error — retrying in 60s';
     document.getElementById('overhead').innerHTML =
       '<div class="empty"><div class="icon">⚠️</div><p>Could not reach flight API.<br>Will retry shortly.</p></div>';
   }
 }
 
 async function refreshWeather() {
-  try {
-    const w = await fetchWeather();
-    renderWeather(w);
-  } catch(e) {
-    console.error('Weather error:', e);
-  }
+  try { renderWeather(await fetchWeather()); } catch(e) {}
 }
 
+/* ─── Settings UI ─── */
+function updateSettingsUI() {
+  document.getElementById('home-coords').textContent =
+    `${HOME.lat.toFixed(4)}°N, ${HOME.lon.toFixed(4)}°E`;
+  document.getElementById('loc-name').textContent = HOME.name;
+  document.querySelectorAll('.radius-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.km) === SCAN_KM);
+  });
+}
+
+document.querySelectorAll('.radius-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    SCAN_KM = parseInt(b.dataset.km);
+    homeCircle.setRadius(SCAN_KM * 1000);
+    saveConfig();
+    updateSettingsUI();
+    refresh();
+  });
+});
+
 /* ─── Boot ─── */
+updateSettingsUI();
 refreshWeather();
 refresh();
 setInterval(refresh, REFRESH_S * 1000);
-setInterval(refreshWeather, WEATHER_REFRESH_S * 1000);
+setInterval(refreshWeather, 5 * 60 * 1000);
 </script>
 </body>
 </html>
