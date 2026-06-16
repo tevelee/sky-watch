@@ -185,8 +185,11 @@
       font-size: 9px; font-weight: 700; padding: 2px 7px;
       border-radius: 4px; text-transform: uppercase; white-space: nowrap;
     }
-    .tag-near { background: #052e16; color: var(--green); }
-    .tag-far  { background: #0f1f3d; color: #6b8fd4; }
+    .tag-near    { background: #052e16; color: var(--green); }
+    .tag-arr     { background: #0f1f3d; color: #60a5fa; }
+    .tag-dep     { background: #1c1400; color: var(--amber); }
+    .tag-transit { background: #1a0f2e; color: #a78bfa; }
+    .tag-far     { background: #12161f; color: var(--dim); }
 
     .fl-info { flex: 1; min-width: 0; }
     .fl-cs {
@@ -366,9 +369,15 @@ function bearingDiff(a, b) {
   return d;
 }
 
-// Internally everything is feet / knots / ft-per-min (adsb.fi native units)
+// Display in metric; API gives feet / knots / ft-per-min
+const ftToM    = ft  => Math.round(ft * 0.3048);
 const ktsToKmh = kt  => Math.round(kt * 1.852);
-const FL        = ft  => 'FL' + String(Math.round(ft / 100)).padStart(3, '0');
+const fpmToMpm = fpm => Math.round(Math.abs(fpm) * 0.3048);
+function altStr(altFt) {
+  if (!altFt) return '—';
+  const m = ftToM(altFt);
+  return m >= 1000 ? (m / 1000).toFixed(1) + ' km' : m.toLocaleString() + ' m';
+}
 
 function headingCard(deg) {
   const dirs = ['N','NE','E','SE','S','SW','W','NW'];
@@ -400,6 +409,16 @@ function inferStatus(plane, distKm) {
   if (vr >  200) return 'Climbing';
   if (altFt > 28000) return 'Cruise';
   return 'Overflying';
+}
+
+function classifyBUD(plane) {
+  const altM    = ftToM(plane.baro_alt || 0);
+  const vr      = plane.vert_rate || 0; // ft/min
+  const distBUD = haversine(plane.lat, plane.lon, BUD.lat, BUD.lon);
+  if (distBUD < 120 && vr < -200 && altM < 9500) return 'arriving';
+  if (distBUD < 90  && vr >  400 && altM < 8000) return 'departing';
+  if (altM > 9000) return 'transit';
+  return 'other';
 }
 
 /* ─── Caches ─── */
@@ -455,7 +474,7 @@ function updateMap(planes) {
   airborne.forEach((p, i) => {
     const hi = i === 0;
     const popup = `<b>${p.callsign || p.icao24}</b><br>
-      ${p.baro_alt ? FL(p.baro_alt) : '?'} &nbsp;·&nbsp; ${p.velocity ? p.velocity+'kt' : '?'}
+      ${altStr(p.baro_alt)} &nbsp;·&nbsp; ${p.velocity ? ktsToKmh(p.velocity)+' km/h' : '?'}
       ${p._airline ? '<br>' + p._airline : ''}`;
 
     L.marker([p.lat, p.lon], { icon: planeIcon(p.heading||0, hi) })
@@ -475,9 +494,10 @@ function updateMap(planes) {
 // Fallback: airplanes.live — same format
 async function fetchFlights() {
   const DIST_NM = 50; // ~92 km
+  // airplanes.live has Access-Control-Allow-Origin: * so it works from any browser origin
   const endpoints = [
-    `https://opendata.adsb.fi/api/v2/lat/${HOME.lat}/lon/${HOME.lon}/dist/${DIST_NM}`,
     `https://api.airplanes.live/v2/point/${HOME.lat}/${HOME.lon}/${DIST_NM}`,
+    `https://opendata.adsb.fi/api/v2/lat/${HOME.lat}/lon/${HOME.lon}/dist/${DIST_NM}`,
   ];
   let last;
   for (const url of endpoints) {
@@ -551,17 +571,17 @@ function renderWeather(w) {
   `;
 }
 
-function vertSymbol(vr) { // vr in ft/min
+function vertSymbol(vr) { // vr in ft/min, display in m/min
   if (!vr) return '';
-  if (vr >  200) return `↑ ${Math.round(vr).toLocaleString()} ft/min`;
-  if (vr < -200) return `↓ ${Math.abs(Math.round(vr)).toLocaleString()} ft/min`;
+  if (vr >  200) return `↑ ${fpmToMpm(vr)} m/min`;
+  if (vr < -200) return `↓ ${fpmToMpm(vr)} m/min`;
   return '→ Level';
 }
 
 function renderOverhead(plane) {
-  const altFt    = plane.baro_alt || null; // already feet
-  const speedKts = plane.velocity || null; // already knots
-  const speedKmh = speedKts ? ktsToKmh(speedKts) : null;
+  const altFt    = plane.baro_alt || null;
+  const altM     = altFt ? ftToM(altFt) : null;
+  const speedKmh = plane.velocity ? ktsToKmh(plane.velocity) : null;
 
   const typeCode  = plane.type_code || null;
   const acInfo    = aircraft(typeCode);
@@ -597,13 +617,13 @@ function renderOverhead(plane) {
     <div class="stats">
       <div class="stat">
         <div class="stat-label">Altitude</div>
-        <div class="stat-value">${altFt ? FL(altFt) : '—'}</div>
-        <div class="stat-sub">${altFt ? altFt.toLocaleString() + ' ft' : ''}</div>
+        <div class="stat-value">${altM ? altM.toLocaleString() : '—'}</div>
+        <div class="stat-sub">${altM ? 'm' : ''}</div>
       </div>
       <div class="stat">
         <div class="stat-label">Speed</div>
-        <div class="stat-value">${speedKts ?? '—'}</div>
-        <div class="stat-sub">${speedKts ? 'kts · ' + speedKmh + ' km/h' : ''}</div>
+        <div class="stat-value">${speedKmh ?? '—'}</div>
+        <div class="stat-sub">${speedKmh ? 'km/h' : ''}</div>
       </div>
       <div class="stat">
         <div class="stat-label">Heading</div>
@@ -620,8 +640,8 @@ function renderOverhead(plane) {
       ${typeCode ? `<span class="badge">🛩 ${typeCode}</span>` : ''}
       ${plane.squawk ? `<span class="badge">📡 ${plane.squawk}</span>` : ''}
       ${plane.country ? `<span class="badge">🌍 ${plane.country}</span>` : ''}
-      ${altFt && altFt > 28000 ? '<span class="badge">☁️ Cruising altitude</span>' : ''}
-      ${altFt && altFt < 5000  ? '<span class="badge">🛬 Low — on approach?</span>' : ''}
+      ${altM && altM > 8500 ? '<span class="badge">☁️ Cruising altitude</span>' : ''}
+      ${altM && altM < 1500 ? '<span class="badge">🛬 Low — on approach?</span>' : ''}
     </div>
   `;
 
@@ -646,21 +666,40 @@ function renderQueue(planes) {
     return;
   }
 
-  document.getElementById('queue').innerHTML = airborne.map((p, i) => {
-    const altFt = p.baro_alt || null; // already feet
-    const al    = airline(p.callsign) || p.operator || p.country || '—';
-    const tag   = p._dist <= CLOSE_KM ? 'tag-near' : 'tag-far';
-    const label = p._dist <= CLOSE_KM ? 'CLOSE' : Math.round(p._dist) + ' km';
+  const BUD_TAG = {
+    arriving:  { css: 'tag-arr',     label: 'Arriving BUD' },
+    departing: { css: 'tag-dep',     label: 'Departing BUD' },
+    transit:   { css: 'tag-transit', label: 'High transit' },
+    other:     null,
+  };
+
+  document.getElementById('queue').innerHTML = airborne.map(p => {
+    const al      = airline(p.callsign) || p.operator || p.country || '—';
+    const altM    = p.baro_alt ? ftToM(p.baro_alt) : null;
+    const speedKmh = p.velocity ? ktsToKmh(p.velocity) : null;
+    const budClass = p._bud;
+    const budTag   = BUD_TAG[budClass];
+    const isClose  = p._dist <= CLOSE_KM;
+
+    let tagCss, tagLabel;
+    if (isClose) {
+      tagCss = 'tag-near'; tagLabel = Math.round(p._dist) + ' km';
+    } else if (budTag) {
+      tagCss = budTag.css; tagLabel = budTag.label;
+    } else {
+      tagCss = 'tag-far'; tagLabel = Math.round(p._dist) + ' km';
+    }
+
     return `
       <div class="fl-row">
-        <span class="fl-tag ${tag}">${label}</span>
+        <span class="fl-tag ${tagCss}">${tagLabel}</span>
         <div class="fl-info">
           <div class="fl-cs">${p.callsign || p.icao24.toUpperCase()}</div>
           <div class="fl-airline">${al}</div>
         </div>
         <div class="fl-right">
-          <div class="fl-alt">${altFt ? FL(altFt) : '—'}</div>
-          <div class="fl-spd">${p.velocity ? p.velocity + ' kt' : ''}</div>
+          <div class="fl-alt">${altM ? altM.toLocaleString() + ' m' : '—'}</div>
+          <div class="fl-spd">${speedKmh ? speedKmh + ' km/h' : ''}</div>
         </div>
       </div>`;
   }).join('');
@@ -691,10 +730,11 @@ async function refresh() {
   try {
     const planes = await fetchFlights();
 
-    // Annotate distance + airline
+    // Annotate distance + airline + BUD classification
     planes.forEach(p => {
       p._dist    = (p.lat && p.lon) ? haversine(HOME.lat, HOME.lon, p.lat, p.lon) : Infinity;
       p._airline = airline(p.callsign);
+      p._bud     = (p.lat && p.lon) ? classifyBUD(p) : 'other';
     });
 
     const airborne = planes
