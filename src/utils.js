@@ -96,6 +96,61 @@ export function lookUpAngle(plane, home) {
   }
 }
 
+// ── Sonic boom ──────────────────────────────────────────────────────
+// Returns a boom prediction object when the plane is supersonic and the
+// observer is inside or near the Mach cone footprint, or null otherwise.
+//
+// Mach cone half-angle: μ = arcsin(1/M)
+// At the plane's altitude h, the boom carpet extends laterally ~h/tan(μ)
+// from the ground track. We check the perpendicular distance from the
+// observer to the aircraft's ground track to decide if we're in range.
+export function sonicBoomPrediction(plane, home) {
+  if (!plane.mach || plane.mach < 1.0) return null
+  if (!plane.lat || !plane.lon || !plane.heading || !plane.baro_alt) return null
+
+  const M   = plane.mach
+  const mu  = Math.asin(1 / M)                   // Mach cone half-angle (rad)
+  const altM = plane.baro_alt * 0.3048            // altitude in metres
+
+  // Carpet half-width at sea level (metres)
+  const carpetM = altM / Math.tan(mu)
+
+  // Observer position relative to plane in km (East, North)
+  const cosLat = Math.cos(plane.lat * Math.PI / 180)
+  const dE = (home.lon - plane.lon) * 111.32 * cosLat
+  const dN = (home.lat - plane.lat) * 110.57
+
+  // Unit vector along ground track
+  const hdgRad = plane.heading * Math.PI / 180
+  const tE = Math.sin(hdgRad), tN = Math.cos(hdgRad)
+
+  // Perpendicular (cross-track) distance from observer to track in km
+  const crossKm = Math.abs(dE * tN - dN * tE)
+  const crossM  = crossKm * 1000
+
+  // Along-track distance (negative = plane hasn't reached our longitude yet)
+  const alongKm = dE * tE + dN * tN
+
+  if (crossM > carpetM * 1.5) return null   // clearly outside carpet
+
+  const inCarpet  = crossM <= carpetM
+  const speedKmS  = ktsToKmh(plane.velocity) / 3600   // km/s
+  // Time until boom arrives: sound travels the slant distance from the cone
+  // intercept point. Approximate as carpet edge at current forward position.
+  const etaSec = speedKmS > 0 && alongKm < 0
+    ? Math.round(Math.abs(alongKm) / speedKmS)
+    : null
+
+  return {
+    mach:       M.toFixed(2),
+    muDeg:      Math.round(mu * 180 / Math.PI),
+    carpetKm:   Math.round(carpetM / 100) / 10,
+    crossKm:    Math.round(crossKm * 10) / 10,
+    inCarpet,
+    etaSec,
+  }
+}
+
 export function squawkAlert(squawk) {
   const codes = { '7700': '🚨 Emergency', '7600': '📡 Radio failure', '7500': '🚨 Hijack declared' }
   return codes[squawk] || null

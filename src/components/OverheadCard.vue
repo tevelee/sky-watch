@@ -111,6 +111,31 @@
         </div>
       </template>
 
+      <!-- Sonic boom predictor -->
+      <template v-if="boom">
+        <div class="sec-label">💥 Sonic boom</div>
+        <div :class="['boom-card', boom.inCarpet ? 'boom-warn' : 'boom-near']">
+          <div class="boom-row">
+            <span class="boom-icon">{{ boom.inCarpet ? '⚠️' : '📡' }}</span>
+            <span class="boom-text">
+              <strong>Mach {{ boom.mach }}</strong> —
+              {{ boom.inCarpet
+                  ? `you are inside the boom carpet (${boom.crossKm} km off-track, carpet ±${boom.carpetKm} km)`
+                  : `boom carpet edge is ${(boom.crossKm - boom.carpetKm).toFixed(1)} km away (carpet ±${boom.carpetKm} km)`
+              }}
+            </span>
+          </div>
+          <div v-if="boom.etaSec !== null" class="boom-row">
+            <span class="boom-icon">⏱</span>
+            <span class="boom-text">Boom expected in ~<strong>{{ boom.etaSec }}s</strong></span>
+          </div>
+          <div class="boom-row">
+            <span class="boom-icon">📐</span>
+            <span class="boom-text">Mach cone half-angle: {{ boom.muDeg }}°</span>
+          </div>
+        </div>
+      </template>
+
       <!-- Badges -->
       <div class="badges">
         <span v-if="plane._pax"   class="badge hi">👥 ~{{ plane._pax }} passengers</span>
@@ -289,7 +314,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { lookUpAngle, vertStr, bearingCard as headingCard } from '../utils'
+import { lookUpAngle, vertStr, bearingCard as headingCard, sonicBoomPrediction } from '../utils'
 import { fetchPhoto } from '../composables/useFlights'
 import { AIRPORTS } from '../data/airports'
 import { useUnits } from '../composables/useUnits'
@@ -314,6 +339,10 @@ watch(() => props.plane?.reg, async (reg) => {
 
 const lookUp = computed(() =>
   props.plane && props.home ? lookUpAngle(props.plane, props.home) : null
+)
+
+const boom = computed(() =>
+  props.plane && props.home ? sonicBoomPrediction(props.plane, props.home) : null
 )
 
 const vertInfo = computed(() => vertStr(props.plane?.vert_rate))
@@ -529,6 +558,19 @@ const squawkMeaning = computed(() => {
 .pd-dim { color: var(--dim); font-size: 10px; }
 .pd-v.climb { color: var(--green); }
 .pd-v.desc  { color: #f87171; }
+
+.boom-card {
+  border-radius: 8px; padding: 9px 11px;
+  display: flex; flex-direction: column; gap: 5px; margin-bottom: 4px;
+}
+.boom-warn { background: #2a0a00; border: 1px solid #dc2626; }
+.boom-near { background: #0a0e1a; border: 1px solid var(--bdr); }
+.boom-row  { display: flex; align-items: flex-start; gap: 7px; font-size: 11.5px; color: var(--muted); }
+.boom-icon { flex-shrink: 0; font-size: 13px; }
+.boom-text { line-height: 1.4; }
+.boom-text strong { color: var(--text); }
+.boom-warn .boom-text { color: #fca5a5; }
+.boom-warn .boom-text strong { color: #ffffff; }
 
 .atc-section { margin-top: 4px; }
 
