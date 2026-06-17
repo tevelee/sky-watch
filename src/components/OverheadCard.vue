@@ -45,6 +45,9 @@
         </div>
       </div>
 
+      <!-- Story card -->
+      <div v-if="story" class="story-card">✈ {{ story }}</div>
+
       <!-- Classification -->
       <div v-if="classification" :class="['class-badge', classification.css]">
         {{ classification.label }}
@@ -314,7 +317,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { lookUpAngle, vertStr, bearingCard as headingCard, sonicBoomPrediction } from '../utils'
+import { lookUpAngle, vertStr, bearingCard as headingCard, sonicBoomPrediction, flightStory } from '../utils'
 import { fetchPhoto } from '../composables/useFlights'
 import { AIRPORTS } from '../data/airports'
 import { useUnits } from '../composables/useUnits'
@@ -344,6 +347,8 @@ const lookUp = computed(() =>
 const boom = computed(() =>
   props.plane && props.home ? sonicBoomPrediction(props.plane, props.home) : null
 )
+
+const story = computed(() => props.plane ? flightStory(props.plane, AIRPORTS) : null)
 
 const vertInfo = computed(() => vertStr(props.plane?.vert_rate))
 
@@ -485,6 +490,12 @@ const squawkMeaning = computed(() => {
 .route-mid { flex: 1; display: flex; align-items: center; }
 .route-line  { flex: 1; height: 1px; background: var(--bdr); }
 .route-plane { font-size: 13px; margin: 0 5px; color: var(--amber); }
+
+.story-card {
+  font-size: 11.5px; color: var(--muted); line-height: 1.5;
+  background: #0a0e1a; border-radius: 7px; padding: 8px 10px;
+  border-left: 2px solid var(--blue); margin-bottom: 4px;
+}
 
 .class-badge {
   font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px;

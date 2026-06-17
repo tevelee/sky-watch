@@ -96,6 +96,43 @@ export function lookUpAngle(plane, home) {
   }
 }
 
+// ── Flight story ────────────────────────────────────────────────────
+// Compose a one-line narrative sentence for the flight using position,
+// speed, and known origin/destination airports.
+export function flightStory(plane, airports) {
+  if (!plane.velocity || !plane.lat || !plane.lon) return null
+  const speedKmh = ktsToKmh(plane.velocity)
+  if (speedKmh < 50) return null
+
+  const lookupAp = (iata) => iata && airports.find(a => a.iata === iata)
+  const orig = lookupAp(plane.origIata)
+  const dest = lookupAp(plane.destIata)
+
+  const parts = []
+
+  if (orig) {
+    // Approximate time since departure: distance flown / speed
+    const distFlownKm = haversine(orig.lat, orig.lon, plane.lat, plane.lon)
+    const elapsedMin  = Math.round(distFlownKm / (speedKmh / 60))
+    const h = Math.floor(elapsedMin / 60)
+    const m = elapsedMin % 60
+    const ago = h > 0 ? `${h}h ${m}m` : `${m}m`
+    parts.push(`Left ${orig.city} (${orig.iata}) ${ago} ago`)
+  }
+
+  if (dest) {
+    const distRemKm  = haversine(plane.lat, plane.lon, dest.lat, dest.lon)
+    const remainMin  = Math.round(distRemKm / (speedKmh / 60))
+    const h = Math.floor(remainMin / 60)
+    const m = remainMin % 60
+    const eta = h > 0 ? `${h}h ${m}m` : `${m}m`
+    parts.push(`landing in ${dest.city} (${dest.iata}) in ~${eta}`)
+  }
+
+  if (!parts.length) return null
+  return parts.join(' · ')
+}
+
 // ── Sonic boom ──────────────────────────────────────────────────────
 // Returns a boom prediction object when the plane is supersonic and the
 // observer is inside or near the Mach cone footprint, or null otherwise.
