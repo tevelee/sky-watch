@@ -348,7 +348,11 @@ const showPilot   = ref(false)
 const showDoppler = ref(false)
 
 watch(() => props.plane?.reg, async (reg) => {
-  photoUrl.value = reg ? (await fetchPhoto(reg)) : null
+  photoUrl.value = null
+  if (!reg) return
+  const url = await fetchPhoto(reg)
+  // Guard against stale response from a previous plane arriving after a switch
+  if (props.plane?.reg === reg) photoUrl.value = url
 }, { immediate: true })
 
 const lookUp = computed(() =>
@@ -392,12 +396,6 @@ const destLabel = computed(() => {
   if (!iata) return 'Destination'
   return props.plane?._destName || airportName(iata) || iata
 })
-
-const CLASS_LABELS = {
-  arriving:  { css: 'cls-arr', label: '' },
-  departing: { css: 'cls-dep', label: '' },
-  transit:   { css: 'cls-transit', label: 'High transit' },
-}
 
 const classification = computed(() => {
   const c   = props.plane?._classification

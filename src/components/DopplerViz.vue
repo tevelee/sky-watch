@@ -58,7 +58,8 @@ const props = defineProps({
 const radialKmS = computed(() => {
   if (!props.plane || !props.home) return 0
   const p = props.plane, h = props.home
-  if (!p.lat || !p.lon || !p.velocity || !p.heading) return 0
+  // lat/lon 0 is valid (equator/meridian); heading 0 is due North — use null checks, not falsy
+  if (p.lat == null || p.lon == null || !p.velocity) return 0
 
   const cosLat = Math.cos(p.lat * Math.PI / 180)
   const dE = (h.lon - p.lon) * 111.32 * cosLat   // observer relative to plane

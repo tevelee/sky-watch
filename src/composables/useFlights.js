@@ -94,7 +94,7 @@ try {
 function persistRouteCache() {
   try {
     const obj = {}
-    routeCache.forEach((v, k) => { if (v !== false || true) obj[k] = v })
+    routeCache.forEach((v, k) => { obj[k] = v })
     sessionStorage.setItem(ROUTE_SESSION_KEY, JSON.stringify(obj))
   } catch {}
 }
