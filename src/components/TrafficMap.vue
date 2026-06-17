@@ -1,6 +1,13 @@
 <template>
   <div class="map-card">
-    <div class="card-title">Live traffic map</div>
+    <div class="map-header">
+      <span class="card-title" style="margin:0">Live traffic map</span>
+      <button
+        :class="['heatmap-btn', { active: showHeatmap }]"
+        :title="showHeatmap ? 'Hide flight heatmap' : 'Show flight heatmap'"
+        @click="toggleHeatmap"
+      >🌡 Heatmap{{ showHeatmap ? ' ✓' : '' }}</button>
+    </div>
     <div ref="mapEl" class="map"></div>
   </div>
 </template>
@@ -8,6 +15,7 @@
 <script setup>
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import L from 'leaflet'
+import { useHeatmap } from '../composables/useHeatmap'
 
 const props = defineProps({
   planes:     Array,
@@ -20,8 +28,11 @@ const emit = defineEmits(['location-change', 'select'])
 
 const mapEl = ref(null)
 
-let map, homeMarker, homeCircle, apMarker, planeLayer, routeLayer
-let planeMarkers = {}
+let map, homeMarker, homeCircle, apMarker, planeLayer, routeLayer, heatLayer
+let planeMarkers  = {}
+const showHeatmap = ref(false)
+const { points: heatPoints, ingest: heatIngest } = useHeatmap()
+const heatRenderer = L.canvas ? undefined : undefined  // resolved on mount
 
 function planeIcon(hdg, highlight) {
   const c = highlight ? '#f59e0b' : '#3b82f6'
@@ -115,6 +126,7 @@ onMounted(() => {
 
   planeLayer = L.layerGroup().addTo(map)
   routeLayer = L.layerGroup().addTo(map)
+  heatLayer  = L.layerGroup().addTo(map)
 
   setAirportMarker(props.airport)
   updatePlanes()
@@ -122,7 +134,32 @@ onMounted(() => {
 
 onUnmounted(() => { map?.remove() })
 
-watch(() => props.planes, updatePlanes, { deep: true })
+function drawHeatmap() {
+  if (!heatLayer) return
+  heatLayer.clearLayers()
+  if (!showHeatmap.value) return
+  const renderer = L.canvas({ padding: 0.2 })
+  heatPoints.value.forEach(pt => {
+    L.circleMarker([pt.lat, pt.lon], {
+      renderer,
+      radius:      6,
+      weight:      0,
+      fillColor:   '#f59e0b',
+      fillOpacity: 0.18,
+    }).addTo(heatLayer)
+  })
+}
+
+function toggleHeatmap() {
+  showHeatmap.value = !showHeatmap.value
+  drawHeatmap()
+}
+
+watch(() => props.planes, (planes) => {
+  heatIngest(planes)
+  updatePlanes()
+  if (showHeatmap.value) drawHeatmap()
+}, { deep: true })
 
 watch(() => props.home, (h) => {
   homeMarker?.setLatLng([h.lat, h.lon])
@@ -160,6 +197,22 @@ watch(() => props.selectedId, (id) => {
   min-height: 420px;
 }
 
+.map-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+.heatmap-btn {
+  background: #111827; border: 1px solid var(--bdr); color: var(--dim);
+  font-size: 10.5px; padding: 3px 9px; border-radius: 5px; cursor: pointer;
+  transition: all .15s;
+}
+.heatmap-btn:hover  { border-color: var(--amber); color: var(--amber); }
+.heatmap-btn.active { background: #1c1400; border-color: var(--amber); color: var(--amber); }
+
 @media (max-width: 860px) {
   .map-card {
     min-height: 280px;
@@ -175,7 +228,6 @@ watch(() => props.selectedId, (id) => {
   text-transform: uppercase;
   letter-spacing: 1.8px;
   color: var(--dim);
-  margin-bottom: 10px;
   flex-shrink: 0;
 }
 
