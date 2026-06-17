@@ -1,41 +1,57 @@
 <template>
   <div class="app">
     <AppHeader :last-update="lastUpdate" :loading="loading" :error="error" />
-    <WeatherStrip :weather="weather" />
-    <LocationBar
-      :home="home"
-      :scan-km="scanKm"
-      :airport="airport"
-      @location-change="onLocationChange"
-      @scan-change="onScanChange"
-    />
-    <div class="main-content">
-      <div class="left-col">
-        <OverheadCard :plane="overhead" :home="home" :airport="airport" />
-        <SkyStats :planes="airborne" />
-        <NearbyList
-          :planes="airborne"
-          :home="home"
-          :airport="airport"
-          :selected-id="selectedId"
-          @select="onSelect"
-        />
-        <DeparturesList
-          :departures="departures"
-          :airport="airport"
-          :loading="departuresLoading"
-        />
-      </div>
-      <TrafficMap
-        :planes="airborne"
+
+    <!-- Tab bar -->
+    <nav class="tab-bar">
+      <button :class="['tab', { active: tab === 'sky' }]"     @click="tab = 'sky'">✈ Sky Watch</button>
+      <button :class="['tab', { active: tab === 'logbook' }]" @click="tab = 'logbook'">📋 Logbook <span v-if="logEntries.length" class="tab-count">{{ logEntries.length }}</span></button>
+    </nav>
+
+    <template v-if="tab === 'sky'">
+      <WeatherStrip :weather="weather" />
+      <LocationBar
         :home="home"
         :scan-km="scanKm"
         :airport="airport"
-        :selected-id="selectedId"
         @location-change="onLocationChange"
-        @select="onSelect"
+        @scan-change="onScanChange"
       />
-    </div>
+      <div class="main-content">
+        <div class="left-col">
+          <OverheadCard :plane="overhead" :home="home" :airport="airport" />
+          <SkyStats :planes="airborne" />
+          <NearbyList
+            :planes="airborne"
+            :home="home"
+            :airport="airport"
+            :selected-id="selectedId"
+            @select="onSelect"
+          />
+          <DeparturesList
+            :departures="departures"
+            :airport="airport"
+            :loading="departuresLoading"
+          />
+        </div>
+        <TrafficMap
+          :planes="airborne"
+          :home="home"
+          :scan-km="scanKm"
+          :airport="airport"
+          :selected-id="selectedId"
+          @location-change="onLocationChange"
+          @select="onSelect"
+        />
+      </div>
+    </template>
+
+    <LogbookPage
+      v-else-if="tab === 'logbook'"
+      :entries="logEntries"
+      :stats="logStats"
+      @clear="clearLog"
+    />
   </div>
 </template>
 
@@ -45,6 +61,7 @@ import { useSettings }   from './composables/useSettings'
 import { useFlights }    from './composables/useFlights'
 import { useDepartures } from './composables/useDepartures'
 import { useWeather }    from './composables/useWeather'
+import { useLogbook }    from './composables/useLogbook'
 import { nearestAirport } from './data/airports'
 import AppHeader      from './components/AppHeader.vue'
 import WeatherStrip   from './components/WeatherStrip.vue'
@@ -54,6 +71,7 @@ import TrafficMap     from './components/TrafficMap.vue'
 import NearbyList     from './components/NearbyList.vue'
 import DeparturesList from './components/DeparturesList.vue'
 import SkyStats       from './components/SkyStats.vue'
+import LogbookPage    from './components/LogbookPage.vue'
 
 const { home, scanKm, saveSettings } = useSettings()
 const airport = computed(() => nearestAirport(home.value.lat, home.value.lon))
@@ -69,9 +87,12 @@ const airborne = computed(() =>
 )
 const overhead = computed(() => airborne.value[0] ?? null)
 
+const { entries: logEntries, stats: logStats, clearLog } = useLogbook(overhead)
+
+const tab = ref('sky')
+
 const selectedId = ref(null)
 function onSelect(icao24) {
-  // Toggle off when the same plane is selected again.
   selectedId.value = selectedId.value === icao24 ? null : icao24
 }
 
@@ -92,6 +113,45 @@ function onScanChange(km) {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+}
+
+.tab-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 0;
+  padding: 0 14px;
+  background: #090d19;
+  border-bottom: 1px solid var(--bdr);
+  flex-shrink: 0;
+}
+
+.tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--dim);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: color .15s;
+  margin-bottom: -1px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  letter-spacing: .3px;
+}
+.tab:hover { color: var(--muted); }
+.tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+
+.tab-count {
+  background: var(--blue);
+  color: #0a0e1a;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 8px;
+  line-height: 1.4;
 }
 
 .main-content {
