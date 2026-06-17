@@ -20,6 +20,11 @@
           :selected-id="selectedId"
           @select="onSelect"
         />
+        <DeparturesList
+          :departures="departures"
+          :airport="airport"
+          :loading="departuresLoading"
+        />
       </div>
       <TrafficMap
         :planes="airborne"
@@ -36,22 +41,25 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { useSettings }  from './composables/useSettings'
-import { useFlights }   from './composables/useFlights'
-import { useWeather }   from './composables/useWeather'
+import { useSettings }   from './composables/useSettings'
+import { useFlights }    from './composables/useFlights'
+import { useDepartures } from './composables/useDepartures'
+import { useWeather }    from './composables/useWeather'
 import { nearestAirport } from './data/airports'
-import AppHeader    from './components/AppHeader.vue'
-import WeatherStrip from './components/WeatherStrip.vue'
-import LocationBar  from './components/LocationBar.vue'
-import OverheadCard from './components/OverheadCard.vue'
-import TrafficMap   from './components/TrafficMap.vue'
-import NearbyList   from './components/NearbyList.vue'
-import SkyStats     from './components/SkyStats.vue'
+import AppHeader      from './components/AppHeader.vue'
+import WeatherStrip   from './components/WeatherStrip.vue'
+import LocationBar    from './components/LocationBar.vue'
+import OverheadCard   from './components/OverheadCard.vue'
+import TrafficMap     from './components/TrafficMap.vue'
+import NearbyList     from './components/NearbyList.vue'
+import DeparturesList from './components/DeparturesList.vue'
+import SkyStats       from './components/SkyStats.vue'
 
 const { home, scanKm, saveSettings } = useSettings()
 const airport = computed(() => nearestAirport(home.value.lat, home.value.lon))
 
 const { planes, loading, error, lastUpdate } = useFlights(home, scanKm, airport)
+const { departures, loading: departuresLoading } = useDepartures(airport)
 const { weather } = useWeather(home)
 
 const airborne = computed(() =>

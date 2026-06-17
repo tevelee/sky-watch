@@ -250,12 +250,35 @@
 
         <!-- ATC Radio section -->
         <div class="atc-section">
-          <div class="pd-label-row">ATC radio</div>
+          <div class="pd-label-row">Live ATC radio</div>
+
+          <div v-if="feeds.length" class="freq-list">
+            <div
+              v-for="f in feeds"
+              :key="f.url"
+              :class="['freq-row', { active: isActive(f.url) }]"
+            >
+              <button
+                class="freq-btn"
+                :class="{ on: isActive(f.url) }"
+                :title="isActive(f.url) ? 'Mute this channel' : 'Listen to this channel'"
+                @click="radio.toggle(f.url)"
+              >{{ isActive(f.url) && !isError(f.url) ? '🔊' : '🔇' }}</button>
+              <div class="freq-meta">
+                <span class="freq-label">{{ f.label }}</span>
+                <span v-if="f.freq" class="freq-num">{{ f.freq }} MHz</span>
+              </div>
+              <span v-if="isLoading(f.url)" class="freq-state">connecting…</span>
+              <span v-else-if="isError(f.url)" class="freq-state err">unavailable</span>
+              <span v-else-if="isActive(f.url)" class="freq-state live">● live</span>
+            </div>
+          </div>
+
           <a v-if="airport" :href="atcUrl(airport.iata)" target="_blank" rel="noopener" class="atc-link">
-            🎧 Listen to {{ airport.iata }} tower on LiveATC →
+            {{ feeds.length ? `More ${airport.iata} feeds on LiveATC →` : `🎧 Find ${airport.iata} feeds on LiveATC →` }}
           </a>
           <div class="atc-note">
-            LiveATC streams live and archived audio for most airports. Real-time transcripts and speaker identification (which aircraft is talking) are not available as free services — some research tools use OpenAI Whisper offline.
+            Channels stream live from LiveATC.net. If a channel won't connect it may be offline or hosted on a different LiveATC server.
           </div>
         </div>
       </div>
@@ -271,6 +294,8 @@ import { fetchPhoto } from '../composables/useFlights'
 import { AIRPORTS } from '../data/airports'
 import { useUnits } from '../composables/useUnits'
 import { atcUrl } from '../data/atc'
+import { getFeeds } from '../data/atcFeeds'
+import { useAtcRadio } from '../composables/useAtcRadio'
 
 const props = defineProps({
   plane:   Object,
@@ -340,6 +365,13 @@ const classification = computed(() => {
 
 const WAKE = { light: 'L — Light', small: 'L — Light', medium: 'M — Medium', heavy: 'H — Heavy', super: 'J — Super' }
 const wakeCategory = computed(() => WAKE[props.plane?._ac?.cat] ?? '—')
+
+// Live ATC radio
+const radio = useAtcRadio()
+const feeds = computed(() => getFeeds(props.airport?.iata))
+function isActive(url)  { return radio.current.value === url }
+function isLoading(url) { return isActive(url) && radio.status.value === 'loading' }
+function isError(url)   { return isActive(url) && radio.status.value === 'error' }
 
 const squawkMeaning = computed(() => {
   const s = props.plane?.squawk
@@ -499,6 +531,28 @@ const squawkMeaning = computed(() => {
 .pd-v.desc  { color: #f87171; }
 
 .atc-section { margin-top: 4px; }
+
+.freq-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
+.freq-row {
+  display: flex; align-items: center; gap: 9px;
+  background: #0a0e1a; border: 1px solid var(--bdr); border-radius: 7px;
+  padding: 6px 9px;
+}
+.freq-row.active { border-color: var(--green); background: #0a1a12; }
+.freq-btn {
+  flex-shrink: 0;
+  background: #111827; border: 1px solid var(--bdr); border-radius: 6px;
+  font-size: 14px; line-height: 1; padding: 4px 7px; cursor: pointer;
+  transition: all .15s;
+}
+.freq-btn:hover { border-color: var(--green); }
+.freq-btn.on { background: #0f2a1c; border-color: var(--green); }
+.freq-meta { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+.freq-label { font-size: 12px; color: var(--text); font-weight: 600; }
+.freq-num   { font-family: var(--mono); font-size: 10px; color: var(--dim); }
+.freq-state { font-size: 10px; flex-shrink: 0; }
+.freq-state.live { color: var(--green); font-weight: 700; }
+.freq-state.err  { color: #f87171; }
 
 .atc-link {
   display: block; text-align: center;

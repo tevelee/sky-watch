@@ -41,27 +41,39 @@
       </a>
     </div>
 
-    <!-- Radius selector -->
-    <div class="radius-group">
-      <span class="label">Radius:</span>
-      <button
-        v-for="km in [10, 25, 50, 100]"
-        :key="km"
-        :class="['rbtn', { active: scanKm === km }]"
-        @click="$emit('scan-change', km)"
-      >{{ km }} km</button>
-    </div>
+    <!-- Settings toggle -->
+    <button
+      class="settings-toggle"
+      :class="{ open: settingsOpen }"
+      :aria-expanded="settingsOpen"
+      title="Settings"
+      @click="settingsOpen = !settingsOpen"
+    >⚙ <span class="st-label">Settings</span></button>
 
-    <!-- Units selector -->
-    <div class="units-group">
-      <span class="label">Units:</span>
-      <button
-        v-for="opt in UNIT_OPTIONS"
-        :key="opt.value"
-        :class="['rbtn', { active: units === opt.value }]"
-        :title="opt.desc"
-        @click="setUnits(opt.value)"
-      >{{ opt.label }}</button>
+    <!-- Collapsible settings -->
+    <div v-show="settingsOpen" class="settings-panel">
+      <!-- Radius selector -->
+      <div class="radius-group">
+        <span class="label">Radius:</span>
+        <button
+          v-for="km in [10, 25, 50, 100]"
+          :key="km"
+          :class="['rbtn', { active: scanKm === km }]"
+          @click="$emit('scan-change', km)"
+        >{{ km }} km</button>
+      </div>
+
+      <!-- Units selector -->
+      <div class="units-group">
+        <span class="label">Units:</span>
+        <button
+          v-for="opt in UNIT_OPTIONS"
+          :key="opt.value"
+          :class="['rbtn', { active: units === opt.value }]"
+          :title="opt.desc"
+          @click="setUnits(opt.value)"
+        >{{ opt.label }}</button>
+      </div>
     </div>
   </div>
 </template>
@@ -79,6 +91,8 @@ const props = defineProps({
 const emit = defineEmits(['location-change', 'scan-change'])
 
 const { units, setUnits } = useUnits()
+
+const settingsOpen = ref(false)
 
 const query        = ref('')
 const results      = ref([])
@@ -244,11 +258,39 @@ function shortName(dn) {
   gap: 5px;
 }
 
+.settings-toggle {
+  margin-left: auto;
+  background: #111827;
+  border: 1px solid var(--bdr);
+  color: var(--dim);
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all .15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+}
+.settings-toggle:hover { border-color: var(--blue); color: var(--blue); }
+.settings-toggle.open  { background: #1e3a5f; border-color: var(--blue); color: var(--blue); }
+
+.settings-panel {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding-top: 7px;
+  margin-top: 3px;
+  border-top: 1px solid var(--bdr);
+}
+
 .radius-group {
   display: flex;
   align-items: center;
   gap: 5px;
-  margin-left: auto;
 }
 .label { color: var(--dim); }
 .rbtn {
@@ -288,13 +330,17 @@ function shortName(dn) {
   .airport-pill {
     order: 2;
   }
-  .radius-group {
-    margin-left: 0;
-    order: 4;
-    width: 100%;
+  .settings-toggle {
+    order: 3;
   }
+  .settings-panel {
+    order: 6;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .radius-group,
   .units-group {
-    order: 5;
     width: 100%;
   }
   .rbtn {
