@@ -174,10 +174,40 @@ watch(() => props.airport, (ap) => {
   setAirportMarker(ap)
 }, { deep: true })
 
-// Reflect selection changes (e.g. from the nearby list): re-render to move the
-// highlight, then pan to and open the selected plane's popup.
-watch(() => props.selectedId, (id) => {
-  updatePlanes()
+// Reflect selection changes without rebuilding all markers — only update the
+// two markers whose highlight state changed, then recompute the route line.
+watch(() => props.selectedId, (id, oldId) => {
+  const list = props.planes ?? []
+  const ap   = props.airport
+
+  // When nothing is explicitly selected, closest plane (index 0) is highlighted.
+  const prevHi = oldId ?? list[0]?.icao24
+  const nextHi = id   ?? list[0]?.icao24
+
+  if (prevHi !== nextHi) {
+    // Deselect old highlighted marker
+    const prev = prevHi && list.find(p => p.icao24 === prevHi)
+    if (prev && planeMarkers[prevHi])
+      planeMarkers[prevHi].setIcon(planeIcon(prev.heading ?? 0, false))
+
+    // Select new highlighted marker
+    const next = nextHi && list.find(p => p.icao24 === nextHi)
+    if (next && planeMarkers[nextHi])
+      planeMarkers[nextHi].setIcon(planeIcon(next.heading ?? 0, true))
+  }
+
+  // Recompute the route line from highlighted plane to airport
+  routeLayer.clearLayers()
+  if (nextHi && ap) {
+    const p = list.find(pl => pl.icao24 === nextHi)
+    if (p?.lat != null && p?.lon != null) {
+      L.polyline([[p.lat, p.lon], [ap.lat, ap.lon]], {
+        color: '#f59e0b', weight: 1, dashArray: '4,8', opacity: .3,
+      }).addTo(routeLayer)
+    }
+  }
+
+  // Pan + open popup for explicit selections (not for deselect or default fallback)
   const marker = id && planeMarkers[id]
   if (marker) {
     map.panTo(marker.getLatLng())
