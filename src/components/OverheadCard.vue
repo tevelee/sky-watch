@@ -95,6 +95,15 @@
         </div>
       </template>
 
+      <!-- Doppler visualizer -->
+      <div class="sec-label-row">
+        <span class="sec-label" style="margin:0">Physics</span>
+        <button class="toggle-btn" @click="showDoppler = !showDoppler">
+          {{ showDoppler ? '▲ Hide' : '▼ Show' }} Doppler
+        </button>
+      </div>
+      <DopplerViz v-if="showDoppler" :plane="plane" :home="home" />
+
       <!-- Look-up & physics -->
       <template v-if="lookUp">
         <div class="sec-label">Sky position</div>
@@ -317,6 +326,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import DopplerViz from './DopplerViz.vue'
 import { lookUpAngle, vertStr, bearingCard as headingCard, sonicBoomPrediction, flightStory } from '../utils'
 import { fetchPhoto } from '../composables/useFlights'
 import { AIRPORTS } from '../data/airports'
@@ -333,8 +343,9 @@ const props = defineProps({
 
 const { altParts, speedParts, fmtVert } = useUnits()
 
-const photoUrl = ref(null)
-const showPilot = ref(false)
+const photoUrl    = ref(null)
+const showPilot   = ref(false)
+const showDoppler = ref(false)
 
 watch(() => props.plane?.reg, async (reg) => {
   photoUrl.value = reg ? (await fetchPhoto(reg)) : null
@@ -537,6 +548,18 @@ const squawkMeaning = computed(() => {
 }
 .badge.hi    { border-color: var(--amber); color: var(--amber); background: #1c1400; }
 .badge.amber { border-color: var(--amber); color: var(--amber); background: #1c1400; }
+
+.sec-label-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 8px 0 5px;
+}
+
+.toggle-btn {
+  background: transparent; border: 1px solid var(--bdr); color: var(--dim);
+  font-size: 9.5px; padding: 3px 8px; border-radius: 5px; cursor: pointer;
+  transition: all .15s;
+}
+.toggle-btn:hover { border-color: var(--blue); color: var(--blue); }
 
 .expand-btn {
   width: 100%; margin-top: 10px;
