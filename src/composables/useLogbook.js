@@ -22,7 +22,11 @@ export function useLogbook(overhead) {
   function record(plane) {
     if (!plane?.icao24) return
     const now = Date.now()
+    // In-memory cooldown (fast path, same session)
     if ((recent.get(plane.icao24) ?? 0) + COOLDOWN_MS > now) return
+    // Persisted cooldown — survives browser refresh within the same window
+    const prev = [...entries.value].reverse().find(e => e.icao24 === plane.icao24)
+    if (prev && now - prev.id < COOLDOWN_MS) return
     recent.set(plane.icao24, now)
     entries.value.push({
       id:       now,
