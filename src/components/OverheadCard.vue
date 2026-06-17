@@ -31,8 +31,8 @@
       <!-- Route -->
       <div class="route-bar">
         <div class="ap">
-          <div class="ap-code">{{ plane.origIata || '—' }}</div>
-          <div class="ap-name">{{ originName }}</div>
+          <div class="ap-code">{{ inferredOrig || '—' }}</div>
+          <div class="ap-name">{{ inferredOrig ? (airportName(inferredOrig) || inferredOrig) : 'Origin' }}</div>
         </div>
         <div class="route-mid">
           <div class="route-line"></div>
@@ -40,8 +40,8 @@
           <div class="route-line"></div>
         </div>
         <div class="ap">
-          <div class="ap-code">{{ plane.destIata || '—' }}</div>
-          <div class="ap-name">{{ destName }}</div>
+          <div class="ap-code">{{ inferredDest || '—' }}</div>
+          <div class="ap-name">{{ inferredDest ? (airportName(inferredDest) || inferredDest) : 'Destination' }}</div>
         </div>
       </div>
 
@@ -153,11 +153,20 @@ const vertInfo = computed(() => vertStr(props.plane?.vert_rate))
 function airportName(iata) {
   if (!iata) return null
   const ap = AIRPORTS.find(a => a.iata === iata)
-  return ap ? ap.city : iata
+  return ap ? ap.city : null
 }
 
-const originName = computed(() => airportName(props.plane?.origIata) || 'Origin')
-const destName   = computed(() => airportName(props.plane?.destIata) || 'Destination')
+const inferredOrig = computed(() => {
+  if (props.plane?.origIata) return props.plane.origIata
+  if (props.plane?._classification === 'departing') return props.airport?.iata ?? null
+  return null
+})
+
+const inferredDest = computed(() => {
+  if (props.plane?.destIata) return props.plane.destIata
+  if (props.plane?._classification === 'arriving') return props.airport?.iata ?? null
+  return null
+})
 
 const CLASS_LABELS = {
   arriving:  { css: 'cls-arr', label: '' },

@@ -92,9 +92,21 @@ function onScanChange(km) {
 }
 
 @media (max-width: 860px) {
+  .app {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
   .main-content {
     grid-template-columns: 1fr;
-    overflow-y: auto;
+    overflow: visible;
+    height: auto;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+  .left-col {
+    overflow: visible;
+    height: auto;
   }
 }
 </style>

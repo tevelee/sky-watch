@@ -13,11 +13,9 @@
           <div class="row-callsign">
             <span class="flag" v-if="p._flag">{{ p._flag }}</span>
             <span class="cs">{{ p.callsign || p.icao24?.toUpperCase() }}</span>
-            <template v-if="p.origIata || p.destIata">
+            <template v-if="flightRoute(p)">
               <span class="route-sep">·</span>
-              <span class="route">
-                {{ p.origIata || '?' }} → {{ p.destIata || '?' }}
-              </span>
+              <span class="route">{{ flightRoute(p).orig }} → {{ flightRoute(p).dest }}</span>
             </template>
           </div>
           <div class="row-sub">
@@ -56,6 +54,18 @@ const props = defineProps({
 
 const visible = computed(() => props.planes.slice(0, LIMIT))
 
+function flightRoute(p) {
+  const apIata = props.airport?.iata
+  const orig = p.origIata
+  const dest = p.destIata
+  if (orig && dest) return { orig, dest }
+  const cls = p._classification
+  if (cls === 'arriving')  return { orig: orig || '?', dest: dest || apIata || '?' }
+  if (cls === 'departing') return { orig: orig || apIata || '?', dest: dest || '?' }
+  if (orig || dest) return { orig: orig || '?', dest: dest || '?' }
+  return null
+}
+
 function tagClass(p) {
   const d = p._dist
   if (d <= 15) return 'tag-close'
@@ -85,7 +95,7 @@ function tagLabel(p) {
   border-radius: var(--radius);
   padding: 12px 14px;
   flex: 1;
-  min-height: 0;
+  min-height: 220px;
   display: flex;
   flex-direction: column;
 }
@@ -161,5 +171,20 @@ function tagLabel(p) {
   text-align: center;
   padding: 6px 0 2px;
   font-style: italic;
+}
+
+@media (max-width: 860px) {
+  .card {
+    flex: none;
+    min-height: auto;
+  }
+  .list {
+    max-height: none;
+    overflow-y: visible;
+  }
+  .row {
+    padding: 9px 0;
+  }
+  .cs { font-size: 14px; }
 }
 </style>

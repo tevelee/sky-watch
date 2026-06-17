@@ -15,7 +15,7 @@ export function useSettings() {
     name: cfg.name ?? 'Taraliget',
   })
 
-  const scanKm = ref(cfg.scanKm ?? 100)
+  const scanKm = ref(cfg.scanKm ?? 25)
 
   function saveSettings() {
     try {

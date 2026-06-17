@@ -40,7 +40,7 @@
     <div class="radius-group">
       <span class="label">Radius:</span>
       <button
-        v-for="km in [50, 100, 200]"
+        v-for="km in [10, 25, 50, 100]"
         :key="km"
         :class="['rbtn', { active: scanKm === km }]"
         @click="$emit('scan-change', km)"
@@ -109,7 +109,7 @@ function shortName(dn) {
   padding: 7px 14px;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   flex-wrap: wrap;
   flex-shrink: 0;
   font-size: 11.5px;
@@ -209,7 +209,45 @@ function shortName(dn) {
   border-radius: 5px;
   cursor: pointer;
   transition: all .15s;
+  min-height: 28px;
 }
 .rbtn:hover  { border-color: var(--blue); color: var(--blue); }
 .rbtn.active { background: #1e3a5f; border-color: var(--blue); color: var(--blue); }
+
+@media (max-width: 860px) {
+  .location-bar {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+  .search-wrap {
+    width: 100%;
+  }
+  .search-input {
+    width: 100%;
+    box-sizing: border-box;
+    font-size: 16px; /* prevents iOS zoom */
+    padding: 7px 12px;
+  }
+  .coords {
+    font-size: 10.5px;
+    order: 3;
+    width: 100%;
+  }
+  .hint { display: none; }
+  .airport-pill {
+    order: 2;
+  }
+  .radius-group {
+    margin-left: 0;
+    order: 4;
+    width: 100%;
+  }
+  .rbtn {
+    flex: 1;
+    text-align: center;
+    padding: 6px 4px;
+    font-size: 12px;
+    min-height: 36px;
+  }
+}
 </style>

@@ -21,6 +21,13 @@ html, body, #app {
   overflow: hidden;
 }
 
+@media (max-width: 860px) {
+  html, body, #app {
+    height: auto;
+    overflow: visible;
+  }
+}
+
 body {
   background: var(--bg);
   color: var(--text);

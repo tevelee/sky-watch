@@ -142,6 +142,15 @@ watch(() => props.airport, (ap) => {
   min-height: 420px;
 }
 
+@media (max-width: 860px) {
+  .map-card {
+    min-height: 280px;
+  }
+  .map {
+    min-height: 230px;
+  }
+}
+
 .card-title {
   font-size: 9.5px;
   font-weight: 700;
