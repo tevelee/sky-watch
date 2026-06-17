@@ -5,8 +5,14 @@
       <div class="icon">🌙</div>
       <p>No airborne traffic detected</p>
     </div>
-    <div v-else class="list">
-      <div v-for="p in visible" :key="p.icao24" class="row">
+    <div v-else ref="listEl" class="list">
+      <div
+        v-for="p in visible"
+        :key="p.icao24"
+        :data-id="p.icao24"
+        :class="['row', { selected: p.icao24 === selectedId }]"
+        @click="emit('select', p.icao24)"
+      >
         <!-- Left: tag + route -->
         <div class="row-left">
           <span :class="['tag', tagClass(p)]">{{ tagLabel(p) }}</span>
@@ -41,7 +47,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useUnits } from '../composables/useUnits'
 
 const { fmtAlt, fmtSpeed, fmtDist } = useUnits()
@@ -49,12 +55,31 @@ const { fmtAlt, fmtSpeed, fmtDist } = useUnits()
 const LIMIT = 14
 
 const props = defineProps({
-  planes:  Array,
-  home:    Object,
-  airport: Object,
+  planes:     Array,
+  home:       Object,
+  airport:    Object,
+  selectedId: String,
+})
+const emit = defineEmits(['select'])
+
+const listEl = ref(null)
+
+const visible = computed(() => {
+  const top = props.planes.slice(0, LIMIT)
+  // Keep the selected plane visible even if it's outside the top of the list.
+  if (props.selectedId && !top.some(p => p.icao24 === props.selectedId)) {
+    const sel = props.planes.find(p => p.icao24 === props.selectedId)
+    if (sel) top.push(sel)
+  }
+  return top
 })
 
-const visible = computed(() => props.planes.slice(0, LIMIT))
+// When selection changes from elsewhere (e.g. clicking the map), scroll the row in.
+watch(() => props.selectedId, async (id) => {
+  if (!id) return
+  await nextTick()
+  listEl.value?.querySelector(`[data-id="${id}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+})
 
 function flightRoute(p) {
   const apIata = props.airport?.iata
@@ -132,10 +157,19 @@ function tagLabel(p) {
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
-  padding: 7px 0;
+  padding: 7px 8px;
+  margin: 0 -8px;
   border-bottom: 1px solid #111827;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background .12s;
 }
 .row:last-child { border-bottom: none; }
+.row:hover { background: #0f1626; }
+.row.selected {
+  background: #0f1f3d;
+  box-shadow: inset 2px 0 0 var(--blue);
+}
 
 .row-left  { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .row-right { flex-shrink: 0; text-align: right; display: flex; flex-direction: column; gap: 1px; align-items: flex-end; }

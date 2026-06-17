@@ -13,21 +13,29 @@
       <div class="left-col">
         <OverheadCard :plane="overhead" :home="home" :airport="airport" />
         <SkyStats :planes="airborne" />
-        <NearbyList :planes="airborne" :home="home" :airport="airport" />
+        <NearbyList
+          :planes="airborne"
+          :home="home"
+          :airport="airport"
+          :selected-id="selectedId"
+          @select="onSelect"
+        />
       </div>
       <TrafficMap
         :planes="airborne"
         :home="home"
         :scan-km="scanKm"
         :airport="airport"
+        :selected-id="selectedId"
         @location-change="onLocationChange"
+        @select="onSelect"
       />
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useSettings }  from './composables/useSettings'
 import { useFlights }   from './composables/useFlights'
 import { useWeather }   from './composables/useWeather'
@@ -52,6 +60,12 @@ const airborne = computed(() =>
     .sort((a, b) => a._dist - b._dist)
 )
 const overhead = computed(() => airborne.value[0] ?? null)
+
+const selectedId = ref(null)
+function onSelect(icao24) {
+  // Toggle off when the same plane is selected again.
+  selectedId.value = selectedId.value === icao24 ? null : icao24
+}
 
 function onLocationChange(newHome) {
   home.value = { ...home.value, ...newHome }

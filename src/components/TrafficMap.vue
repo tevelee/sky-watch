@@ -10,16 +10,18 @@ import { ref, watch, onMounted, onUnmounted } from 'vue'
 import L from 'leaflet'
 
 const props = defineProps({
-  planes:  Array,
-  home:    Object,
-  scanKm:  Number,
-  airport: Object,
+  planes:     Array,
+  home:       Object,
+  scanKm:     Number,
+  airport:    Object,
+  selectedId: String,
 })
-const emit = defineEmits(['location-change'])
+const emit = defineEmits(['location-change', 'select'])
 
 const mapEl = ref(null)
 
 let map, homeMarker, homeCircle, apMarker, planeLayer, routeLayer
+let planeMarkers = {}
 
 function planeIcon(hdg, highlight) {
   const c = highlight ? '#f59e0b' : '#3b82f6'
@@ -58,11 +60,14 @@ function updatePlanes() {
   if (!planeLayer) return
   planeLayer.clearLayers()
   routeLayer.clearLayers()
-  const ap = props.airport
+  planeMarkers = {}
+  const ap  = props.airport
+  const sel = props.selectedId
   ;(props.planes ?? []).forEach((p, i) => {
     if (p.lat == null || p.lon == null) return
-    const hi = i === 0
-    L.marker([p.lat, p.lon], { icon: planeIcon(p.heading ?? 0, hi) })
+    // Highlight the selected plane, or the closest one when nothing is selected.
+    const hi = sel ? p.icao24 === sel : i === 0
+    const marker = L.marker([p.lat, p.lon], { icon: planeIcon(p.heading ?? 0, hi) })
       .bindPopup([
         `<b>${p.callsign ?? p.icao24}</b>`,
         p._ac?.name ?? p.typeCode ?? '',
@@ -70,7 +75,9 @@ function updatePlanes() {
         p.origIata && p.destIata ? `${p.origIata} → ${p.destIata}` : '',
         p._airline ?? '',
       ].filter(Boolean).join('<br>'))
+      .on('click', () => emit('select', p.icao24))
       .addTo(planeLayer)
+    planeMarkers[p.icao24] = marker
 
     if (hi && ap) {
       L.polyline([[p.lat, p.lon], [ap.lat, ap.lon]], {
@@ -129,6 +136,17 @@ watch(() => props.scanKm, (km) => {
 watch(() => props.airport, (ap) => {
   setAirportMarker(ap)
 }, { deep: true })
+
+// Reflect selection changes (e.g. from the nearby list): re-render to move the
+// highlight, then pan to and open the selected plane's popup.
+watch(() => props.selectedId, (id) => {
+  updatePlanes()
+  const marker = id && planeMarkers[id]
+  if (marker) {
+    map.panTo(marker.getLatLng())
+    marker.openPopup()
+  }
+})
 </script>
 
 <style scoped>
