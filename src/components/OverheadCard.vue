@@ -32,7 +32,7 @@
       <div class="route-bar">
         <div class="ap">
           <div class="ap-code">{{ inferredOrig || '—' }}</div>
-          <div class="ap-name">{{ inferredOrig ? (airportName(inferredOrig) || inferredOrig) : 'Origin' }}</div>
+          <div class="ap-name">{{ origLabel }}</div>
         </div>
         <div class="route-mid">
           <div class="route-line"></div>
@@ -41,7 +41,7 @@
         </div>
         <div class="ap">
           <div class="ap-code">{{ inferredDest || '—' }}</div>
-          <div class="ap-name">{{ inferredDest ? (airportName(inferredDest) || inferredDest) : 'Destination' }}</div>
+          <div class="ap-name">{{ destLabel }}</div>
         </div>
       </div>
 
@@ -309,6 +309,18 @@ const inferredDest = computed(() => {
   if (props.plane?.destIata) return props.plane.destIata
   if (props.plane?._classification === 'arriving') return props.airport?.iata ?? null
   return null
+})
+
+const origLabel = computed(() => {
+  const iata = inferredOrig.value
+  if (!iata) return 'Origin'
+  return props.plane?._origName || airportName(iata) || iata
+})
+
+const destLabel = computed(() => {
+  const iata = inferredDest.value
+  if (!iata) return 'Destination'
+  return props.plane?._destName || airportName(iata) || iata
 })
 
 const CLASS_LABELS = {

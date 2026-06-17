@@ -73,6 +73,34 @@ async function fetchFromApi(home, nm) {
 }
 
 const photoCache = new Map()
+const routeCache = new Map()
+
+// Look up a flight's origin/destination airports by callsign.
+// airplanes.live (and most ADS-B feeds) don't carry route info, so we
+// resolve it separately via adsbdb — a free, CORS-enabled route database.
+export async function fetchRoute(callsign) {
+  const cs = callsign?.trim()
+  if (!cs) return null
+  if (routeCache.has(cs)) return routeCache.get(cs)
+  let route = null
+  try {
+    const r = await fetch(`https://api.adsbdb.com/v0/callsign/${encodeURIComponent(cs)}`)
+    if (r.ok) {
+      const d  = await r.json()
+      const fr = d?.response?.flightroute
+      if (fr?.origin && fr?.destination) {
+        route = {
+          origIata: fr.origin.iata_code      || fr.origin.icao_code      || null,
+          origName: fr.origin.municipality   || fr.origin.name           || null,
+          destIata: fr.destination.iata_code || fr.destination.icao_code || null,
+          destName: fr.destination.municipality || fr.destination.name    || null,
+        }
+      }
+    }
+  } catch {}
+  routeCache.set(cs, route)
+  return route
+}
 
 export async function fetchPhoto(reg) {
   if (!reg) return null
@@ -96,8 +124,10 @@ export function useFlights(home, scanKm, airport) {
   const error       = ref(null)
   const lastUpdate  = ref(null)
   let timer = null
+  let refreshId = 0
 
   async function refresh() {
+    const myId = ++refreshId
     loading.value = true
     error.value   = null
     try {
@@ -108,11 +138,28 @@ export function useFlights(home, scanKm, airport) {
       const raw = await fetchFromApi(h, nm)
       planes.value = raw.map(p => enrichPlane(p, h, ap))
       lastUpdate.value = new Date()
+      enrichRoutes(myId)
     } catch(e) {
       error.value = e.message
     } finally {
       loading.value = false
     }
+  }
+
+  // Resolve origin/destination per plane in the background and merge the
+  // results into the reactive list as they arrive. Guarded by refreshId so a
+  // newer scan's data is never overwritten by an in-flight lookup.
+  async function enrichRoutes(myId) {
+    const list = planes.value
+    await Promise.all(list.map(async p => {
+      if (!p.callsign || p.origIata || p.destIata) return
+      const route = await fetchRoute(p.callsign)
+      if (!route || myId !== refreshId) return
+      p.origIata = route.origIata
+      p.destIata = route.destIata
+      p._origName = route.origName
+      p._destName = route.destName
+    }))
   }
 
   onMounted(() => { refresh(); timer = setInterval(refresh, REFRESH_MS) })
