@@ -21,13 +21,13 @@
           <span class="item-icon">⚡</span>
           <span class="item-label">Fastest</span>
           <span class="item-val">{{ fastest.callsign }}</span>
-          <span class="item-detail">{{ fastest._speedKmh }} km/h</span>
+          <span class="item-detail">{{ fmtSpeed(fastest.velocity) }}</span>
         </div>
         <div v-if="highest" class="item">
           <span class="item-icon">🏔</span>
           <span class="item-label">Highest</span>
           <span class="item-val">{{ highest.callsign }}</span>
-          <span class="item-detail">{{ (highest._altM / 1000).toFixed(1) }} km</span>
+          <span class="item-detail">{{ fmtAlt(highest.baro_alt) }}</span>
         </div>
         <div v-if="nextEta" class="item amber">
           <span class="item-icon">⏱</span>
@@ -48,8 +48,10 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useUnits } from '../composables/useUnits'
 
 const props = defineProps({ planes: Array })
+const { fmtAlt, fmtSpeed } = useUnits()
 
 const totalPax = computed(() =>
   props.planes.reduce((s, p) => s + (p._pax ?? 0), 0)

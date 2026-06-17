@@ -55,13 +55,13 @@
       <div class="stats-grid">
         <div class="stat">
           <div class="sl">Altitude</div>
-          <div class="sv">{{ plane._altM != null ? (plane._altM / 1000).toFixed(1) : '—' }}</div>
-          <div class="su">km</div>
+          <div class="sv">{{ altParts(plane.baro_alt).val }}</div>
+          <div class="su">{{ altParts(plane.baro_alt).unit }}</div>
         </div>
         <div class="stat">
           <div class="sl">Speed</div>
-          <div class="sv">{{ plane._speedKmh ?? '—' }}</div>
-          <div class="su">km/h</div>
+          <div class="sv">{{ speedParts(plane.velocity).val }}</div>
+          <div class="su">{{ speedParts(plane.velocity).unit }}</div>
         </div>
         <div class="stat">
           <div class="sl">Heading</div>
@@ -116,12 +116,105 @@
         <span v-if="plane._pax"   class="badge hi">👥 ~{{ plane._pax }} passengers</span>
         <span v-if="vertInfo"     class="badge">{{ vertInfo }}</span>
         <span v-if="plane._eta"   class="badge amber">⏱ overhead in {{ plane._eta }} min</span>
-        <span v-if="plane._altM && plane._altM > 8500" class="badge">☁️ Cruising altitude</span>
-        <span v-if="plane._altM && plane._altM < 1500" class="badge amber">🛬 Low approach</span>
-        <span v-if="plane._ac?.cat === 'super'"        class="badge hi">🐘 Super-heavy</span>
-        <span v-if="plane._ac?.cat === 'heavy'"        class="badge">⚖️ Heavy wake turbulence</span>
+        <span v-if="plane.baro_alt && plane.baro_alt > 27900" class="badge">☁️ Cruising altitude</span>
+        <span v-if="plane.baro_alt && plane.baro_alt < 5000"  class="badge amber">🛬 Low approach</span>
+        <span v-if="plane._ac?.cat === 'super'"               class="badge hi">🐘 Super-heavy</span>
+        <span v-if="plane._ac?.cat === 'heavy'"               class="badge">⚖️ Heavy wake turbulence</span>
         <span v-if="plane.squawk" class="badge">📡 Squawk {{ plane.squawk }}</span>
       </div>
+
+      <!-- Pilot details toggle -->
+      <button class="expand-btn" @click="showPilot = !showPilot">
+        {{ showPilot ? '▲ Hide' : '▼ Show' }} pilot details
+      </button>
+
+      <!-- Expandable pilot details -->
+      <div v-if="showPilot" class="pilot-panel">
+
+        <div class="pd-label-row">Technical flight data</div>
+        <div class="pd-grid">
+          <div class="pd-cell">
+            <div class="pd-k">Flight Level</div>
+            <div class="pd-v mono">{{ plane.baro_alt ? 'FL' + Math.round(plane.baro_alt / 100) : '—' }}</div>
+          </div>
+          <div class="pd-cell">
+            <div class="pd-k">True Track</div>
+            <div class="pd-v mono">{{ plane.heading ? Math.round(plane.heading) + '° ' + headingCard(plane.heading) : '—' }}</div>
+          </div>
+          <div class="pd-cell">
+            <div class="pd-k">Ground Speed</div>
+            <div class="pd-v mono">{{ plane.velocity ? Math.round(plane.velocity) + ' kt' : '—' }}</div>
+          </div>
+          <div class="pd-cell">
+            <div class="pd-k">Vertical Rate</div>
+            <div class="pd-v mono" :class="{ 'climb': plane.vert_rate > 100, 'desc': plane.vert_rate < -100 }">
+              {{ fmtVert(plane.vert_rate) || 'Level' }}
+            </div>
+          </div>
+          <div v-if="plane.mach" class="pd-cell">
+            <div class="pd-k">Mach</div>
+            <div class="pd-v mono">M {{ plane.mach.toFixed(2) }}</div>
+          </div>
+          <div v-if="plane.baro_alt" class="pd-cell">
+            <div class="pd-k">Pressure Alt</div>
+            <div class="pd-v mono">{{ Math.round(plane.baro_alt).toLocaleString() }} ft</div>
+          </div>
+        </div>
+
+        <div class="pd-label-row">Transponder & identity</div>
+        <div class="pd-grid">
+          <div class="pd-cell">
+            <div class="pd-k">Mode S (ICAO24)</div>
+            <div class="pd-v mono">{{ plane.icao24?.toUpperCase() || '—' }}</div>
+          </div>
+          <div class="pd-cell">
+            <div class="pd-k">Squawk</div>
+            <div class="pd-v mono">{{ plane.squawk || '—' }} <span class="pd-dim">{{ squawkMeaning }}</span></div>
+          </div>
+          <div class="pd-cell">
+            <div class="pd-k">Registration</div>
+            <div class="pd-v mono">{{ plane.reg || '—' }}</div>
+          </div>
+          <div class="pd-cell">
+            <div class="pd-k">ICAO Type</div>
+            <div class="pd-v mono">{{ plane.typeCode || '—' }}</div>
+          </div>
+        </div>
+
+        <template v-if="plane._ac">
+          <div class="pd-label-row">Aircraft category</div>
+          <div class="pd-grid">
+            <div class="pd-cell">
+              <div class="pd-k">Wake turbulence</div>
+              <div class="pd-v">{{ wakeCategory }}</div>
+            </div>
+            <div class="pd-cell">
+              <div class="pd-k">FAA class</div>
+              <div class="pd-v">{{ plane._ac.cat?.charAt(0).toUpperCase() + plane._ac.cat?.slice(1) }}</div>
+            </div>
+            <div v-if="plane._ac.pax" class="pd-cell">
+              <div class="pd-k">Typical capacity</div>
+              <div class="pd-v">~{{ plane._ac.pax }} pax</div>
+            </div>
+            <div v-if="plane._ac.eng" class="pd-cell">
+              <div class="pd-k">Engines</div>
+              <div class="pd-v">{{ plane._ac.eng }} turbofan{{ plane._ac.eng > 1 ? 's' : '' }}</div>
+            </div>
+          </div>
+        </template>
+
+        <!-- ATC Radio section -->
+        <div class="atc-section">
+          <div class="pd-label-row">ATC radio</div>
+          <a v-if="airport" :href="atcUrl(airport.iata)" target="_blank" rel="noopener" class="atc-link">
+            🎧 Listen to {{ airport.iata }} tower on LiveATC →
+          </a>
+          <div class="atc-note">
+            LiveATC streams live and archived audio for most airports. Real-time transcripts and speaker identification (which aircraft is talking) are not available as free services — some research tools use OpenAI Whisper offline.
+          </div>
+        </div>
+      </div>
+
     </template>
   </div>
 </template>
@@ -131,6 +224,8 @@ import { ref, computed, watch } from 'vue'
 import { lookUpAngle, vertStr, bearingCard as headingCard } from '../utils'
 import { fetchPhoto } from '../composables/useFlights'
 import { AIRPORTS } from '../data/airports'
+import { useUnits } from '../composables/useUnits'
+import { atcUrl } from '../data/atc'
 
 const props = defineProps({
   plane:   Object,
@@ -138,7 +233,10 @@ const props = defineProps({
   airport: Object,
 })
 
+const { altParts, speedParts, fmtVert } = useUnits()
+
 const photoUrl = ref(null)
+const showPilot = ref(false)
 
 watch(() => props.plane?.reg, async (reg) => {
   photoUrl.value = reg ? (await fetchPhoto(reg)) : null
@@ -181,6 +279,20 @@ const classification = computed(() => {
   if (c === 'departing') return { css: 'cls-dep',     label: `↑ Departing ${iata}` }
   if (c === 'transit')   return { css: 'cls-transit', label: 'High transit' }
   return null
+})
+
+const WAKE = { light: 'L — Light', small: 'L — Light', medium: 'M — Medium', heavy: 'H — Heavy', super: 'J — Super' }
+const wakeCategory = computed(() => WAKE[props.plane?._ac?.cat] ?? '—')
+
+const squawkMeaning = computed(() => {
+  const s = props.plane?.squawk
+  if (!s) return ''
+  if (s === '7700') return '(Emergency)'
+  if (s === '7600') return '(Radio failure)'
+  if (s === '7500') return '(Hijack)'
+  if (s === '2000') return '(IFR, no discrete)'
+  if (s === '1200') return '(VFR)'
+  return '(Assigned)'
 })
 </script>
 
@@ -296,4 +408,51 @@ const classification = computed(() => {
 }
 .badge.hi    { border-color: var(--amber); color: var(--amber); background: #1c1400; }
 .badge.amber { border-color: var(--amber); color: var(--amber); background: #1c1400; }
+
+.expand-btn {
+  width: 100%; margin-top: 10px;
+  background: transparent; border: 1px solid var(--bdr); color: var(--dim);
+  font-size: 10px; padding: 5px; border-radius: 6px; cursor: pointer;
+  transition: all .15s; text-align: center; letter-spacing: .5px;
+}
+.expand-btn:hover { border-color: var(--blue); color: var(--blue); }
+
+.pilot-panel {
+  margin-top: 8px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+
+.pd-label-row {
+  font-size: 8.5px; text-transform: uppercase; letter-spacing: 1.5px;
+  color: var(--dim); margin-top: 4px;
+}
+
+.pd-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+}
+
+.pd-cell {
+  background: #0a0e1a; border-radius: 6px; padding: 7px 9px;
+}
+.pd-k { font-size: 8px; text-transform: uppercase; letter-spacing: 1px; color: var(--dim); margin-bottom: 3px; }
+.pd-v { font-size: 12px; color: var(--text); line-height: 1.2; }
+.pd-v.mono { font-family: var(--mono); }
+.pd-dim { color: var(--dim); font-size: 10px; }
+.pd-v.climb { color: var(--green); }
+.pd-v.desc  { color: #f87171; }
+
+.atc-section { margin-top: 4px; }
+
+.atc-link {
+  display: block; text-align: center;
+  background: #0a1a12; border: 1px solid #1a3a25; color: var(--green);
+  padding: 8px 12px; border-radius: 7px; font-size: 12px; font-weight: 600;
+  text-decoration: none; transition: all .15s; margin-bottom: 6px;
+}
+.atc-link:hover { background: #0f2a1c; border-color: var(--green); }
+
+.atc-note {
+  font-size: 10px; color: var(--dim); line-height: 1.5;
+  background: #0a0e1a; border-radius: 6px; padding: 7px 9px;
+}
 </style>

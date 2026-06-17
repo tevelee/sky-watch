@@ -28,9 +28,9 @@
         <!-- Right: stats -->
         <div class="row-right">
           <div v-if="p._eta != null" class="eta">⏱ {{ p._eta < 1 ? 'now' : p._eta + ' min' }}</div>
-          <div class="alt">{{ altStr(p.baro_alt) }}</div>
-          <div class="spd" v-if="p._speedKmh">{{ p._speedKmh }} km/h</div>
-          <div class="dist dim">{{ Math.round(p._dist) }} km</div>
+          <div class="alt">{{ fmtAlt(p.baro_alt) }}</div>
+          <div class="spd" v-if="p.velocity">{{ fmtSpeed(p.velocity) }}</div>
+          <div class="dist dim">{{ fmtDist(p._dist) }}</div>
         </div>
       </div>
       <div v-if="planes.length > LIMIT" class="more">
@@ -42,7 +42,9 @@
 
 <script setup>
 import { computed } from 'vue'
-import { altStr } from '../utils'
+import { useUnits } from '../composables/useUnits'
+
+const { fmtAlt, fmtSpeed, fmtDist } = useUnits()
 
 const LIMIT = 14
 

@@ -1,11 +1,11 @@
 <template>
   <div class="weather-strip">
     <template v-if="weather">
-      <span class="w">🌡️ {{ weather.temp }}°C</span>
+      <span class="w">🌡️ {{ fmtTemp(weather.temp) }}</span>
       <span class="w">{{ weatherIcon }} {{ weather.desc }}</span>
       <span class="w">☁️ {{ weather.cloudPct }}%</span>
       <span class="w">💧 {{ weather.humidity }}%</span>
-      <span class="w">💨 {{ weather.windKmh }} km/h {{ weather.windDir }}</span>
+      <span class="w">💨 {{ fmtSpeed(weather.windKmh / 1.852) }} {{ weather.windDir }}</span>
       <span class="w">👁 {{ weather.visKm }} km</span>
     </template>
     <template v-else>
@@ -16,8 +16,10 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useUnits } from '../composables/useUnits'
 
 const props = defineProps({ weather: Object })
+const { fmtTemp, fmtSpeed } = useUnits()
 
 const weatherIcon = computed(() => {
   const c = props.weather?.code ?? -1

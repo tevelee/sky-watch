@@ -30,11 +30,16 @@
       <span class="hint">(or drag pin)</span>
     </div>
 
-    <!-- Nearest airport -->
-    <div v-if="airport" class="airport-pill">
-      ✈ {{ airport.iata }} · {{ airport.city }} · {{ airport.dist }} km
+    <!-- Nearest airport + ATC radio link -->
+    <div class="airport-row">
+      <div v-if="airport" class="airport-pill">
+        ✈ {{ airport.iata }} · {{ airport.city }} · {{ airport.dist }} km
+      </div>
+      <div v-else class="airport-pill dim">No major airport within 300 km</div>
+      <a v-if="airport" :href="atcUrl(airport.iata)" target="_blank" rel="noopener" class="atc-btn" title="Live ATC audio on LiveATC.net">
+        🎧 ATC
+      </a>
     </div>
-    <div v-else class="airport-pill dim">No major airport within 300 km</div>
 
     <!-- Radius selector -->
     <div class="radius-group">
@@ -46,11 +51,25 @@
         @click="$emit('scan-change', km)"
       >{{ km }} km</button>
     </div>
+
+    <!-- Units selector -->
+    <div class="units-group">
+      <span class="label">Units:</span>
+      <button
+        v-for="opt in UNIT_OPTIONS"
+        :key="opt.value"
+        :class="['rbtn', { active: units === opt.value }]"
+        :title="opt.desc"
+        @click="setUnits(opt.value)"
+      >{{ opt.label }}</button>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
+import { useUnits, UNIT_OPTIONS } from '../composables/useUnits'
+import { atcUrl } from '../data/atc'
 
 const props = defineProps({
   home:    Object,
@@ -58,6 +77,8 @@ const props = defineProps({
   airport: Object,
 })
 const emit = defineEmits(['location-change', 'scan-change'])
+
+const { units, setUnits } = useUnits()
 
 const query        = ref('')
 const results      = ref([])
@@ -181,6 +202,12 @@ function shortName(dn) {
 .mono  { font-family: var(--mono); font-size: 10.5px; color: var(--muted); }
 .hint  { font-size: 10px; color: var(--dim); font-style: italic; }
 
+.airport-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .airport-pill {
   background: #0f1f3d;
   border: 1px solid #2d5080;
@@ -192,6 +219,30 @@ function shortName(dn) {
   white-space: nowrap;
 }
 .airport-pill.dim { background: transparent; border-color: var(--bdr); color: var(--dim); font-weight: 400; }
+
+.atc-btn {
+  background: #0a1a12;
+  border: 1px solid #1a3a25;
+  color: var(--green);
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all .15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.atc-btn:hover { background: #0f2a1c; border-color: var(--green); }
+
+.units-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
 
 .radius-group {
   display: flex;
@@ -240,6 +291,10 @@ function shortName(dn) {
   .radius-group {
     margin-left: 0;
     order: 4;
+    width: 100%;
+  }
+  .units-group {
+    order: 5;
     width: 100%;
   }
   .rbtn {
