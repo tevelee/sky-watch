@@ -8,6 +8,9 @@
       <span class="w">💨 {{ fmtSpeed(weather.windKmh / 1.852) }} {{ weather.windDir }}</span>
       <span class="w">👁 {{ weather.visKm }} km</span>
     </template>
+    <template v-else-if="error">
+      <span class="w muted">⚠️ Weather unavailable</span>
+    </template>
     <template v-else>
       <span class="w muted">⏳ Loading weather…</span>
     </template>
@@ -18,7 +21,7 @@
 import { computed } from 'vue'
 import { useUnits } from '../composables/useUnits'
 
-const props = defineProps({ weather: Object })
+const props = defineProps({ weather: Object, error: Boolean })
 const { fmtTemp, fmtSpeed } = useUnits()
 
 const weatherIcon = computed(() => {

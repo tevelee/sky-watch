@@ -9,7 +9,7 @@
     </nav>
 
     <template v-if="tab === 'sky'">
-      <WeatherStrip :weather="weather" />
+      <WeatherStrip :weather="weather" :error="weatherError" />
       <LocationBar
         :home="home"
         :scan-km="scanKm"
@@ -78,7 +78,7 @@ const airport = computed(() => nearestAirport(home.value.lat, home.value.lon))
 
 const { planes, loading, error, lastUpdate } = useFlights(home, scanKm, airport)
 const { departures, loading: departuresLoading } = useDepartures(airport)
-const { weather } = useWeather(home)
+const { weather, error: weatherError } = useWeather(home)
 
 const airborne = computed(() =>
   planes.value

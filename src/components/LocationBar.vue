@@ -11,7 +11,7 @@
         @keydown.escape="hideDropdown"
       />
       <span v-if="searching" class="spinner">⟳</span>
-      <ul v-if="showDropdown && results.length" class="dropdown">
+      <ul v-if="showDropdown" class="dropdown">
         <li
           v-for="r in results"
           :key="r.place_id"
@@ -20,6 +20,7 @@
           <span class="result-name">{{ shortName(r.display_name) }}</span>
           <span class="result-detail">{{ r.display_name }}</span>
         </li>
+        <li v-if="noResults" class="no-results">No places found</li>
       </ul>
     </div>
 
@@ -98,22 +99,25 @@ const query        = ref('')
 const results      = ref([])
 const searching    = ref(false)
 const showDropdown = ref(false)
+const noResults    = ref(false)
 let searchTimer    = null
 
 function onInput() {
   clearTimeout(searchTimer)
   const q = query.value.trim()
-  if (q.length < 3) { results.value = []; showDropdown.value = false; return }
+  if (q.length < 3) { results.value = []; showDropdown.value = false; noResults.value = false; return }
   searchTimer = setTimeout(doSearch, 350)
 }
 
 async function doSearch() {
   searching.value = true
+  noResults.value = false
   try {
     const q = encodeURIComponent(query.value.trim())
     const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=5&addressdetails=0`)
     results.value = await r.json()
-    showDropdown.value = results.value.length > 0
+    noResults.value = results.value.length === 0
+    showDropdown.value = true
   } catch {}
   finally { searching.value = false }
 }
@@ -129,7 +133,7 @@ function selectResult(r) {
 }
 
 function hideDropdown() {
-  setTimeout(() => { showDropdown.value = false }, 150)
+  setTimeout(() => { showDropdown.value = false; noResults.value = false }, 150)
 }
 
 function shortName(dn) {
@@ -206,6 +210,8 @@ function shortName(dn) {
 .dropdown li:hover { background: #111827; }
 .result-name   { font-size: 12.5px; color: var(--text); font-weight: 500; }
 .result-detail { font-size: 10px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.no-results    { font-size: 12px; color: var(--dim); font-style: italic; cursor: default; }
+.no-results:hover { background: transparent; }
 
 .coords {
   color: var(--dim);

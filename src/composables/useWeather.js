@@ -3,6 +3,7 @@ import { WMO } from '../utils'
 
 export function useWeather(home) {
   const weather = ref(null)
+  const error   = ref(false)
   let timer = null
 
   async function refresh() {
@@ -11,7 +12,7 @@ export function useWeather(home) {
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${h.lat}&longitude=${h.lon}` +
         `&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,weather_code,visibility,cloud_cover&wind_speed_unit=kmh`
       const r = await fetch(url)
-      if (!r.ok) return
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
       const d = await r.json()
       const c = d.current
       const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW']
@@ -25,12 +26,13 @@ export function useWeather(home) {
         visKm:    c.visibility >= 10000 ? '10+' : (c.visibility / 1000).toFixed(1),
         cloudPct: c.cloud_cover,
       }
-    } catch {}
+      error.value = false
+    } catch { error.value = true }
   }
 
   onMounted(() => { refresh(); timer = setInterval(refresh, 5 * 60 * 1000) })
   onUnmounted(() => clearInterval(timer))
   watch(home, refresh, { deep: true })
 
-  return { weather, refresh }
+  return { weather, error, refresh }
 }
