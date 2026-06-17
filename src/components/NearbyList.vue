@@ -13,10 +13,10 @@
           <div class="row-callsign">
             <span class="flag" v-if="p._flag">{{ p._flag }}</span>
             <span class="cs">{{ p.callsign || p.icao24?.toUpperCase() }}</span>
-            <template v-if="flightRoute(p)">
-              <span class="route-sep">·</span>
-              <span class="route">{{ flightRoute(p).orig }} → {{ flightRoute(p).dest }}</span>
-            </template>
+            <span class="route-sep">·</span>
+            <span :class="['route', { dim: flightRoute(p).dim }]">
+              {{ flightRoute(p).orig }} → {{ flightRoute(p).dest }}
+            </span>
           </div>
           <div class="row-sub">
             <span class="airline">{{ p._airline || '—' }}</span>
@@ -60,12 +60,14 @@ function flightRoute(p) {
   const apIata = props.airport?.iata
   const orig = p.origIata
   const dest = p.destIata
-  if (orig && dest) return { orig, dest }
   const cls = p._classification
-  if (cls === 'arriving')  return { orig: orig || '?', dest: dest || apIata || '?' }
-  if (cls === 'departing') return { orig: orig || apIata || '?', dest: dest || '?' }
-  if (orig || dest) return { orig: orig || '?', dest: dest || '?' }
-  return null
+  const knownOrig = orig || (cls === 'departing' ? apIata : null)
+  const knownDest = dest || (cls === 'arriving'  ? apIata : null)
+  return {
+    orig: knownOrig || '?',
+    dest: knownDest || '?',
+    dim: !knownOrig && !knownDest,
+  }
 }
 
 function tagClass(p) {
@@ -156,6 +158,7 @@ function tagLabel(p) {
 .cs   { font-family: var(--mono); font-size: 12.5px; font-weight: 700; color: var(--text); }
 .route-sep { color: var(--dim); }
 .route { font-family: var(--mono); font-size: 11px; color: var(--blue); font-weight: 600; }
+.route.dim { color: var(--dim); font-weight: 400; }
 
 .row-sub { display: flex; gap: 7px; font-size: 10.5px; color: var(--dim); flex-wrap: wrap; }
 .airline { color: var(--muted); }

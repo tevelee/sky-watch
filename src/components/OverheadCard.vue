@@ -137,19 +137,42 @@
             <div class="pd-k">Flight Level</div>
             <div class="pd-v mono">{{ plane.baro_alt ? 'FL' + Math.round(plane.baro_alt / 100) : '—' }}</div>
           </div>
+          <div v-if="plane.nav_alt_mcp" class="pd-cell">
+            <div class="pd-k">Cleared to</div>
+            <div class="pd-v mono" :class="{ climb: plane.nav_alt_mcp > plane.baro_alt, desc: plane.nav_alt_mcp < plane.baro_alt }">
+              FL{{ Math.round(plane.nav_alt_mcp / 100) }}
+              <span class="pd-dim">{{ plane.nav_alt_mcp > plane.baro_alt ? '↑' : plane.nav_alt_mcp < plane.baro_alt ? '↓' : '=' }}</span>
+            </div>
+          </div>
           <div class="pd-cell">
             <div class="pd-k">True Track</div>
             <div class="pd-v mono">{{ plane.heading ? Math.round(plane.heading) + '° ' + headingCard(plane.heading) : '—' }}</div>
           </div>
+          <div v-if="plane.mag_heading" class="pd-cell">
+            <div class="pd-k">Mag Heading</div>
+            <div class="pd-v mono">{{ Math.round(plane.mag_heading) }}° M</div>
+          </div>
           <div class="pd-cell">
             <div class="pd-k">Ground Speed</div>
             <div class="pd-v mono">{{ plane.velocity ? Math.round(plane.velocity) + ' kt' : '—' }}</div>
+          </div>
+          <div v-if="plane.ias" class="pd-cell">
+            <div class="pd-k">IAS</div>
+            <div class="pd-v mono">{{ Math.round(plane.ias) }} kt</div>
+          </div>
+          <div v-if="plane.tas" class="pd-cell">
+            <div class="pd-k">TAS</div>
+            <div class="pd-v mono">{{ Math.round(plane.tas) }} kt</div>
           </div>
           <div class="pd-cell">
             <div class="pd-k">Vertical Rate</div>
             <div class="pd-v mono" :class="{ 'climb': plane.vert_rate > 100, 'desc': plane.vert_rate < -100 }">
               {{ fmtVert(plane.vert_rate) || 'Level' }}
             </div>
+          </div>
+          <div v-if="plane.roll != null" class="pd-cell">
+            <div class="pd-k">Bank Angle</div>
+            <div class="pd-v mono">{{ Math.round(plane.roll) }}° {{ plane.roll > 2 ? '→' : plane.roll < -2 ? '←' : '' }}</div>
           </div>
           <div v-if="plane.mach" class="pd-cell">
             <div class="pd-k">Mach</div>
@@ -159,7 +182,29 @@
             <div class="pd-k">Pressure Alt</div>
             <div class="pd-v mono">{{ Math.round(plane.baro_alt).toLocaleString() }} ft</div>
           </div>
+          <div v-if="plane.nav_qnh" class="pd-cell">
+            <div class="pd-k">QNH</div>
+            <div class="pd-v mono">{{ plane.nav_qnh }} hPa</div>
+          </div>
         </div>
+
+        <template v-if="plane.wind_dir != null || plane.oat != null">
+          <div class="pd-label-row">Atmosphere at altitude</div>
+          <div class="pd-grid">
+            <div v-if="plane.wind_dir != null && plane.wind_kt != null" class="pd-cell">
+              <div class="pd-k">Wind</div>
+              <div class="pd-v mono">{{ Math.round(plane.wind_dir) }}° / {{ Math.round(plane.wind_kt) }} kt</div>
+            </div>
+            <div v-if="plane.oat != null" class="pd-cell">
+              <div class="pd-k">OAT</div>
+              <div class="pd-v mono">{{ Math.round(plane.oat) }}°C</div>
+            </div>
+            <div v-if="plane.tat != null" class="pd-cell">
+              <div class="pd-k">TAT</div>
+              <div class="pd-v mono">{{ Math.round(plane.tat) }}°C</div>
+            </div>
+          </div>
+        </template>
 
         <div class="pd-label-row">Transponder & identity</div>
         <div class="pd-grid">

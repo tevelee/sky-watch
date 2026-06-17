@@ -38,24 +38,37 @@ async function fetchFromApi(home, nm) {
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
   const d = await r.json()
   return (d.ac || []).map(a => ({
-    icao24:    a.hex,
-    callsign:  a.flight?.trim() ?? null,
-    lat:       a.lat,
-    lon:       a.lon,
-    baro_alt:  a.alt_baro === 'ground' ? 0 : (Number(a.alt_baro) || 0),
-    on_ground: a.alt_baro === 'ground' || Boolean(a.on_ground),
-    velocity:  a.gs         || 0,
-    heading:   a.track      || 0,
-    vert_rate: a.baro_rate  || 0,
-    mach:      a.mach       ?? null,
-    squawk:    a.squawk     ?? null,
-    typeCode:  a.t          ?? null,
-    reg:       a.r          ?? null,
-    // Origin/destination — included by airplanes.live when available from enriched data
-    origIata:  a.orig_iata  ?? a.from_iata ?? null,
-    origIcao:  a.orig_icao  ?? null,
-    destIata:  a.dest_iata  ?? a.to_iata  ?? null,
-    destIcao:  a.dest_icao  ?? null,
+    icao24:       a.hex,
+    callsign:     a.flight?.trim() ?? null,
+    lat:          a.lat,
+    lon:          a.lon,
+    baro_alt:     a.alt_baro === 'ground' ? 0 : (Number(a.alt_baro) || 0),
+    on_ground:    a.alt_baro === 'ground' || Boolean(a.on_ground),
+    velocity:     a.gs          || 0,       // ground speed, knots
+    ias:          a.ias         ?? null,    // indicated airspeed, knots
+    tas:          a.tas         ?? null,    // true airspeed, knots
+    heading:      a.track       || 0,       // true track
+    mag_heading:  a.mag_heading ?? null,    // magnetic heading
+    true_heading: a.true_heading?? null,
+    roll:         a.roll        ?? null,    // bank angle, degrees
+    vert_rate:    a.baro_rate   || 0,       // ft/min
+    mach:         a.mach        ?? null,
+    squawk:       a.squawk      ?? null,
+    typeCode:     a.t           ?? null,
+    reg:          a.r           ?? null,
+    // Autopilot targets — tells you where the plane is headed vertically/laterally
+    nav_alt_mcp:  a.nav_altitude_mcp ?? null,  // cleared altitude (ft)
+    nav_alt_fms:  a.nav_altitude_fms ?? null,  // FMS target altitude (ft)
+    nav_heading:  a.nav_heading      ?? null,  // target heading
+    nav_qnh:      a.nav_qnh          ?? null,  // altimeter setting (hPa)
+    // Atmosphere at cruise
+    wind_dir:     a.wd  ?? null,   // wind direction (°)
+    wind_kt:      a.ws  ?? null,   // wind speed (kt)
+    oat:          a.oat ?? null,   // outside air temp (°C)
+    tat:          a.tat ?? null,   // total air temp (°C)
+    // Origin/destination — rarely present but included when enriched
+    origIata:     a.orig_iata  ?? a.from_iata ?? null,
+    destIata:     a.dest_iata  ?? a.to_iata   ?? null,
   }))
 }
 
