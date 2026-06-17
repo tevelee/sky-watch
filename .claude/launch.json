@@ -4,7 +4,7 @@
     {
       "name": "dashboard",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["serve", "-l", "4321", "."],
+      "runtimeArgs": ["vite", "--port", "4321", "--host"],
       "port": 4321
     }
   ]
