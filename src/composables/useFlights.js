@@ -73,33 +73,112 @@ async function fetchFromApi(home, nm) {
 }
 
 const photoCache = new Map()
-const routeCache = new Map()
 
-// Look up a flight's origin/destination airports by callsign.
-// airplanes.live (and most ADS-B feeds) don't carry route info, so we
-// resolve it separately via adsbdb — a free, CORS-enabled route database.
-export async function fetchRoute(callsign) {
-  const cs = callsign?.trim()
-  if (!cs) return null
-  if (routeCache.has(cs)) return routeCache.get(cs)
-  let route = null
+// ── Route cache ──────────────────────────────────────────────────────────────
+// Two-tier: sessionStorage for cross-refresh persistence within the same tab,
+// in-memory Map as a fast synchronous read-through layer.
+//
+// Sentinel value `false` means "looked up, nothing found" so we don't retry.
+// The key is absent when the callsign has never been looked up, or when the
+// last attempt was a network error (so we retry next time).
+const ROUTE_SESSION_KEY = 'sky-routes'
+const routeCache = new Map()     // callsign -> route | false
+const routePending = new Map()   // callsign -> Promise (in-flight dedup)
+
+// Pre-populate from sessionStorage so page refreshes skip re-fetching.
+try {
+  const stored = JSON.parse(sessionStorage.getItem(ROUTE_SESSION_KEY) || '{}')
+  Object.entries(stored).forEach(([cs, r]) => routeCache.set(cs, r))
+} catch {}
+
+function persistRouteCache() {
   try {
-    const r = await fetch(`https://api.adsbdb.com/v0/callsign/${encodeURIComponent(cs)}`)
+    const obj = {}
+    routeCache.forEach((v, k) => { if (v !== false || true) obj[k] = v })
+    sessionStorage.setItem(ROUTE_SESSION_KEY, JSON.stringify(obj))
+  } catch {}
+}
+
+// Concurrency limiter — at most 4 route requests run simultaneously so we
+// don't hammer the adsbdb API with a full plane list at once.
+const MAX_CONCURRENT = 4
+let   activeCount    = 0
+const waitQueue      = []
+
+function processQueue() {
+  while (waitQueue.length && activeCount < MAX_CONCURRENT) {
+    const { fn, resolve, reject } = waitQueue.shift()
+    activeCount++
+    fn().then(resolve, reject).finally(() => { activeCount--; processQueue() })
+  }
+}
+
+function withConcurrencyLimit(fn) {
+  return new Promise((resolve, reject) => {
+    waitQueue.push({ fn, resolve, reject })
+    processQueue()
+  })
+}
+
+async function fetchRouteNetwork(cs) {
+  const ctrl  = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), 8000)
+  try {
+    const r = await fetch(
+      `https://api.adsbdb.com/v0/callsign/${encodeURIComponent(cs)}`,
+      { signal: ctrl.signal }
+    )
+    clearTimeout(timer)
+
+    // Rate-limited — back off 2 s and retry once.
+    if (r.status === 429) {
+      await new Promise(res => setTimeout(res, 2000))
+      return fetchRouteNetwork(cs)
+    }
+
+    let route = false   // sentinel: looked up, not found
     if (r.ok) {
       const d  = await r.json()
       const fr = d?.response?.flightroute
       if (fr?.origin && fr?.destination) {
         route = {
-          origIata: fr.origin.iata_code      || fr.origin.icao_code      || null,
-          origName: fr.origin.municipality   || fr.origin.name           || null,
-          destIata: fr.destination.iata_code || fr.destination.icao_code || null,
-          destName: fr.destination.municipality || fr.destination.name    || null,
+          origIata: fr.origin.iata_code         || fr.origin.icao_code      || null,
+          origName: fr.origin.municipality      || fr.origin.name           || null,
+          destIata: fr.destination.iata_code    || fr.destination.icao_code || null,
+          destName: fr.destination.municipality || fr.destination.name      || null,
         }
       }
     }
-  } catch {}
-  routeCache.set(cs, route)
-  return route
+    // Cache & persist on clean response (success or 404/not-found).
+    // Network errors / timeouts are NOT cached — they can be retried.
+    routeCache.set(cs, route)
+    persistRouteCache()
+    return route === false ? null : route
+  } catch (err) {
+    clearTimeout(timer)
+    throw err   // propagate so the caller can decide not to cache
+  }
+}
+
+// Public API — returns a route object, or null if not found / request failed.
+export async function fetchRoute(callsign) {
+  const cs = callsign?.trim()
+  if (!cs) return null
+
+  // Synchronous cache hit (includes "not found" sentinel)
+  if (routeCache.has(cs)) {
+    const v = routeCache.get(cs)
+    return v === false ? null : v
+  }
+
+  // Deduplicate in-flight requests for the same callsign
+  if (routePending.has(cs)) return routePending.get(cs)
+
+  const p = withConcurrencyLimit(() => fetchRouteNetwork(cs))
+    .catch(() => null)              // network/timeout → null, don't propagate
+    .finally(() => routePending.delete(cs))
+  routePending.set(cs, p)
+  return p
 }
 
 export async function fetchPhoto(reg) {
@@ -146,20 +225,20 @@ export function useFlights(home, scanKm, airport) {
     }
   }
 
-  // Resolve origin/destination per plane in the background and merge the
-  // results into the reactive list as they arrive. Guarded by refreshId so a
-  // newer scan's data is never overwritten by an in-flight lookup.
-  async function enrichRoutes(myId) {
-    const list = planes.value
-    await Promise.all(list.map(async p => {
-      if (!p.callsign || p.origIata || p.destIata) return
+  // Resolve origin/destination for planes that don't have it yet.
+  // Runs in the background (doesn't block the loading state) and is guarded
+  // by refreshId so a stale lookup can never overwrite a newer scan's data.
+  function enrichRoutes(myId) {
+    const list = planes.value.filter(p => p.callsign && !p.origIata && !p.destIata)
+    list.forEach(async p => {
       const route = await fetchRoute(p.callsign)
+      // Drop result if a newer scan has already replaced this plane set
       if (!route || myId !== refreshId) return
-      p.origIata = route.origIata
-      p.destIata = route.destIata
+      p.origIata  = route.origIata
+      p.destIata  = route.destIata
       p._origName = route.origName
       p._destName = route.destName
-    }))
+    })
   }
 
   onMounted(() => { refresh(); timer = setInterval(refresh, REFRESH_MS) })
